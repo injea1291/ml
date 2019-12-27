@@ -1,0 +1,6 @@
+classes=1
+train=data/arow_img.txt
+valid=data/arow_img.txt
+names=data/circle.names
+backup=backup/
+eval=coco

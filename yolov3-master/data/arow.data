@@ -1,0 +1,6 @@
+classes=4
+train=data/arow_img.txt
+valid=data/arow_img.txt
+names=C:/Users\kay/PycharmProjects/untitled1/yolov3-master/data/arow.names
+backup=backup/
+eval=coco
