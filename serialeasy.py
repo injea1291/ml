@@ -137,7 +137,7 @@ while True:
                             if max_val > 0.98:
                                 ix, iy = max_loc[0] + w / 2, max_loc[1] + h / 2
 
-                            if ix > 60:
+                            if ix >= 43:
                                 send("j")
                             else:
                                 max_val1, max_loc1, w1, h1, cutim1 = match("r", 87, 171, 12, 214)
@@ -161,11 +161,13 @@ while True:
             maxvalsb, maxlocsb, wsb, hsb, cutsb = match("sb", 712, 750, 1100, 1400, False)
             if maxvalsb > 0.9:
                 send("5")
-            elif ix <= 43 :
+            elif ix - 33 >= 40 :
+                send("4")
+            elif ix - 33 >= 3:
+                send("l")
+            else:
+
                 send("e")
                 send("a")
                 res1 = ""
-            else:
-                send("4")
-
 
