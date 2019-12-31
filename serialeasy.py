@@ -161,12 +161,11 @@ while True:
             maxvalsb, maxlocsb, wsb, hsb, cutsb = match("sb", 712, 750, 1100, 1400, False)
             if maxvalsb > 0.9:
                 send("5")
-            elif ix - 33 >= 40 :
+            elif ix - 33 >= 31:
                 send("4")
             elif ix - 33 >= 3:
                 send("l")
             else:
-
                 send("e")
                 send("a")
                 res1 = ""
