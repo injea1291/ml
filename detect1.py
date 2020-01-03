@@ -89,7 +89,7 @@ def asd():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, default='C:/Users/kay/PycharmProjects/untitled1/yolov3-master/cfg/yolov3-spparow.cfg', help='cfg file path')
     parser.add_argument('--data', type=str, default='C:/Users/kay/PycharmProjects/untitled1/yolov3-master/data/arow.data', help='coco.data file path')
-    parser.add_argument('--weights', type=str, default='C:/Users/kay/PycharmProjects/untitled1/yolov3-master/weights/best.pt', help='path to weights file')
+    parser.add_argument('--weights', type=str, default='C:/Users/kay/PycharmProjects/untitled1/rune.pt', help='path to weights file')
     parser.add_argument('--images', type=str, default='C:\\Users\\kay\\PycharmProjects\\untitled1\\tmp',
                         help='path to images')
     parser.add_argument('--img-size', type=int, default=608, help='inference size (pixels)')
