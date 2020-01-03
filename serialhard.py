@@ -2,13 +2,16 @@ import sys
 import math
 import serial
 import random
+import time
 from time import sleep
 import cv2.cv2 as cv
 import win32con
 import win32gui
 import win32ui
 import numpy as np
-from threading import Thread
+from threading import Thread, Lock
+import detect1
+import winsound
 
 ser = serial.Serial(
     port='COM4',
@@ -26,7 +29,8 @@ leftk = 216
 rightk = 215
 upk = 218
 downk = 217
-xy = [[0, 0], [0, 0]]
+xy = [[0, 0], [0, 0], False, False]
+lock = Lock()
 
 
 def creen():
@@ -68,26 +72,49 @@ def match(a, img, b, c, d, e, f=True):
 
     minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
     cv.rectangle(cutim, maxloc, (maxloc[0] + w, maxloc[1] + h), (255, 0, 0), 1)
-    x, y = maxloc[0] + w / 2, maxloc[1] + h / 2
-    return maxval, x, y, cutim
+    mxy = maxloc[0] + w / 2, maxloc[1] + h / 2, maxloc
+    return maxval, mxy, cutim
 
 
 def scmc():
     global xy
+    stimety, stime = True, 0
     while True:
-        maxval, x, y, cutim = match("i", creen(), 87, 171, 12, 214)
-        maxval1, x1, y1, cutim1 = match("r", creen(), 87, 171, 12, 214)
+        maxval, mxy, cutim = match("i", creen(), 87, 171, 12, 214)
+        maxval1, mxy1, cutim1 = match("r", creen(), 87, 171, 12, 214)
+        maxvalsb, mxysb, cutsb = match("sb", creen(), 712, 750, 1100, 1400, False)
+        maxvaly, mxyy, cuty = match("y", creen(), 87, 171, 12, 214, False)
+        if maxvalsb > 0.9:
+            lock.acquire()
+            xy[2] = True
+            lock.release()
         if maxval > 0.99:
-            xy[0] = x, y
+            xy[0] = mxy[0:2]
             cv.imshow('asd1', cutim)
             cv.moveWindow('asd1', 10, 100)
             cv.waitKey(1)
         if maxval1 > 0.999 and not math.isinf(maxval1):
-            xy[1] = x1, y1
+            xy[1] = mxy1[0:2]
+            lock.acquire()
+            xy[3] = True
+            lock.release()
             cv.imshow('asd', cutim1)
             cv.moveWindow('asd', 10, 10)
             cv.waitKey(1)
-        print(xy)
+        if maxvaly > 0.96:
+            if stimety == True:
+                stime = time.time()
+                stimety = False
+            elif time.time() - stime > 60:
+                winsound.Beep(262, 1000)
+            else:
+                print(time.time() - stime)
+            cv.imshow('asd2', cuty)
+            cv.moveWindow('asd2', 10, 200)
+            cv.waitKey(1)
+        else:
+            stimety = True
+
 
 def send(b, c=40, d=70, e=40, f=70, a=1):
     if type(b) == str:
@@ -107,70 +134,104 @@ def send(b, c=40, d=70, e=40, f=70, a=1):
         sleep(rint / 1000)
 
 
-
+def goto():
+    tf = [False, False]
+    while True:
+        if xy[0][0] - xy[1][0] >= 40:
+            send(1, a=4)
+            send(leftk, a=2)
+            send(altk)
+            send(altk)
+            send(leftk, a=3)
+        elif xy[1][0] - xy[0][0] >= 40:
+            send(1, a=4)
+            send(rightk, a=2)
+            send(altk)
+            send(altk)
+            send(rightk, a=3)
+        elif xy[0][0] - xy[1][0] >= 5:
+            if tf[0] == False:
+                send(1, a=4)
+            send(leftk, 5, 5, a=2)
+            tf[0] = True
+            tf[1] = False
+        elif xy[1][0] - xy[0][0] >= 5:
+            if tf[1] == False:
+                send(1, a=4)
+            send(rightk, 5, 5, a=2)
+            tf[0] = False
+            tf[1] = True
+        elif xy[0][1] > xy[1][1] + 7:
+            send(1, a=4)
+            send(altk, e=100, f=130)
+            send(96, e=3000, f=3100)
+        elif xy[0][1] < xy[1][1] - 7:
+            send(1, a=4)
+            send(downk, a=2)
+            send(altk)
+            send(downk, 1000, 1100, a=3)
+        else:
+            send(1, a=4)
+            break
 
 
 def stkey():
     global xy
+
     def atkctrl():
         nonlocal swcont, wcont
         radm = random.randint(0, 20)
-        if swcont >= 2:
+        if swcont >= 2 and wcont <= 3:
             wcont += 1
             if radm >= 19:
                 send(leftk, 20, 30, a=2)
-                send(altk, e=41, f=70)
+                send(altk)
                 send(altk, e=20, f=30)
-                send(leftk, 41, 70, a=3)
+                send(leftk, a=3)
                 send('w', e=560, f=630)
 
             else:
                 send(leftk, 20, 30, a=2)
-                send(altk, e=41, f=70)
+                send(altk)
                 send(altk, e=20, f=30)
-                send(leftk, 41, 70, a=3)
-                send(altk, e=41, f=70)
+                send(leftk, a=3)
+                send(altk)
                 send('w', e=560, f=630)
-
-            if wcont >= 3:
-                wcont = 0
-                swcont = 0
         else:
             if radm >= 19:
                 send(leftk, 20, 30, a=2)
-                send(altk, e=41, f=70)
+                send(altk)
                 send(altk, e=20, f=30)
-                send(leftk, 41, 70, a=3)
+                send(leftk, a=3)
                 send(ctrlk, e=560, f=630)
 
             else:
                 send(leftk, 20, 30, a=2)
-                send(altk, e=41, f=70)
+                send(altk)
                 send(altk, e=20, f=30)
-                send(leftk, 41, 70, a=3)
-                send(altk, e=41, f=70)
+                send(leftk, a=3)
+                send(altk)
                 send(ctrlk, e=560, f=630)
 
     swcont = 0
     while True:
         swcont += 1
-        wcont = 0
         send(96, e=900, f=930)
         send('d', e=40, f=60)
         send('d', e=600, f=620)
-        send(rightk, 41, 70, a=2)
+        send(rightk, a=2)
         send('s', e=40, f=60)
         send('s', e=250, f=280)
         send(rightk, 30, 50, a=3)
         send('a', e=40, f=60)
         send('a', e=400, f=500)
 
-        send(altk, e=41, f=70)
-        send(altk, e=41, f=70)
+        send(altk)
+        send(altk)
         send(ctrlk, e=560, f=630)
 
-        send(altk, e=41, f=70)
-        send(altk, e=41, f=70)
+        send(altk)
+        send(altk)
         send(ctrlk, e=560, f=590)
         send(118, e=101, f=150)
 
@@ -194,27 +255,49 @@ def stkey():
             send(altk, e=41, f=70)
 
         send(altk, e=41, f=70)
-        send(downk, e=530, f=580)
+        send(downk, 530, 580, a=3)
 
         send(leftk, 41, 60, a=2)
-        send('a', e=41, f=60)
-        send(leftk, 170, 220, a=3)
-
+        send('a', e=210, f=280)
         send('s', e=550, f=650)
+        send(leftk, 41, 60, a=3)
+        wcont = 0
+        while True:
+            if xy[3]:
+                goto()
+                send(32)
+                img = creen()
+                maxval, mxy, cutim = match("find", img, 100, 210, 395, 508, False)
+                print(maxval)
+                if maxval > 0.6:
+                    x = 100 + mxy[2][1] + 55
+                    y = 400 + mxy[2][0] + 48
+                    cv.imwrite('tmp/image.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
+                    labelli = detect1.asd()
+                    print(labelli)
+                    if len(labelli) == 4:
+                        for i in labelli:
+                            sleep(0.5)
+                            send(eval(i[:-5] + 'k'))
+                xy[3] = False
+            elif xy[2]:
+                send(198, e=1000, f=1100)
+                send(213, e=700, f=800)
+                xy[2] = False
+            elif xy[0][0] - 33 >= 29:
+                atkctrl()
+            elif xy[0][0] - 33 >= 6:
+                send(leftk, 5, 5, a=2)
+            else:
+                if wcont >= 1:
+                    swcont = 0
+                send(leftk, 5, 5, a=3)
+                send(1, 100, 200, a=4)
+                break
 
-        while xy[0][0] - 33 >= 31:
-            atkctrl()
 
-            if xy[0][0] - 33 >= 3:
-                send("l")
-
-
-
-def main():
-    scmct = Thread(target=scmc)
-    scmct.daemon = True
-    scmct.start()
-    stkey()
-
-if __name__ == '__main__':
-    main()
+sleep(1)
+scmct = Thread(target=scmc, daemon=True)
+scmct.start()
+while True:
+    sleep(1)
