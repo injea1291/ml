@@ -4,7 +4,7 @@ from time import sleep
 class rect:
     def __init__(self, sx, sy, ex, ey):
         self.color = (0, 0, 0)
-        self.label = "circle"
+        self.label = 'lie'
         self.sx, self.sy = sx, sy
         self.ex, self.ey = ex, ey
         if self.sx > self.ex and self.sy > self.ey:
@@ -54,9 +54,9 @@ class rect:
 
 
 def rfi():
-    dr = glob.glob(f"{labelo}\\*.txt")
-    if dr.count(f"{labelo}\\{str(di[dcount])}.txt"):
-        f = open(f"{labelo}\\{str(di[dcount])}.txt", 'r')
+    dr = glob.glob(f"labels\\{labelimg}\\*.txt")
+    if dr.count(f"labels\\{labelimg}\\{str(di[dcount])}.txt"):
+        f = open(f"labels\\{labelimg}\\{str(di[dcount])}.txt", 'r')
         print(str(di[dcount]), end=" ")
         lines = f.readlines()
         for g, line in enumerate(lines):
@@ -71,7 +71,7 @@ def rfi():
 
 
 def wfi():
-    f = open(f"{labelo}\\{str(di[dcount])}.txt", 'w')
+    f = open(f"labels\\{labelimg}\\{str(di[dcount])}.txt", 'w')
     for i in rectli:
         lix, liy = [i.lux, i.rdx], [i.luy, i.rdy]
         lix.sort()
@@ -131,21 +131,24 @@ def drawrect(event, x, y, flags, param):
 
 
 draw, start, rectli, di, dcount = False, False, [], [], 0
-labelo, imglo, sm = "labels\\output", "images\\output", 3
+labelimg, sm, zoom = "lie", 3, 0
 
-d = glob.glob(f"{imglo}\\*.jpg")
+d = glob.glob(f"images\\{labelimg}\\*.jpg")
+
 for i in d:
-    i = i[len(imglo) + 1:]
+    i = i.split('\\')[2]
     i = i[:-4]
     di.append(int(i))
 di.sort()
 
-img = cv.imread(f"{imglo}\\{str(di[dcount])}.jpg")
-img = cv.pyrUp(img)
-img = cv.pyrUp(img)
+img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.jpg")
+for i in range(zoom):
+    img = cv.pyrUp(img)
+
 img1 = img.copy()
 cv.namedWindow('image1')
 cv.setMouseCallback('image1', drawrect)
+
 
 rfi()
 
@@ -157,7 +160,6 @@ while (1):
     if k == 27:  # esc
         wfi()
         break
-
     elif k == 119:  # w
         start = True
 
@@ -169,9 +171,9 @@ while (1):
         if len(di) <= dcount:
             dcount = 0
         rfi()
-        img = cv.imread(f"{imglo}\\{str(di[dcount])}.jpg")
-        img = cv.pyrUp(img)
-        img = cv.pyrUp(img)
+        img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.jpg")
+        for i in range(zoom):
+            img = cv.pyrUp(img)
         img1 = img.copy()
 
     elif k == 97:  # a
@@ -181,9 +183,9 @@ while (1):
         if dcount < 0:
             dcount = len(di) - 1
         rfi()
-        img = cv.imread(f"{imglo}\\{str(di[dcount])}.jpg")
-        img = cv.pyrUp(img)
-        img = cv.pyrUp(img)
+        img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.jpg")
+        for i in range(zoom):
+            img = cv.pyrUp(img)
         img1 = img.copy()
 
     elif k == 115:  # s
@@ -204,6 +206,6 @@ while (1):
             elif k == 2490368:  # up arrow
                 i.label = "up"
             else:
-                i.label = "circle"
+                i.label = 'lie'
 
 cv.destroyAllWindows()
