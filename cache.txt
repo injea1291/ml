@@ -1,8 +1,0 @@
-steam http cache
-c 우클 디스크정리
-C:\Users\kay\.PyCharmCE2019.2\system
-cache\content.dat.storageData
-C:\Users\kay\AppData\Local
-pip cache
-temp, CrashDumps
-steam cache

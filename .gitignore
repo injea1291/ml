@@ -1,10 +1,11 @@
 # Project exclude paths
 /images/
 /labels/
-/yolov3-master/output/
-/yolov3-master/.idea/
+/output/
 /venv/
 /.idea/
-/yolov3-master/data/samples/
-/yolov3-master/weights/
+/data/samples/
+/weights/
 /tmp/
+/rune.pt
+/dataimg/
