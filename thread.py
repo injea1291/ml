@@ -1,13 +1,14 @@
-import winsound
-import threading
-import time
+import asyncio
+import datetime
+import random
 
-def asd():
-    winsound.Beep(262, 1000)
 
-t = threading.Thread(target=asd, daemon=True)
-while True:
-    print(1)
-    if t.is_alive() == False:
-        t = threading.Thread(target=asd, daemon=True)
-        t.start()
+def coro():
+    while True:
+        hello = yield 15
+        yield hello
+
+
+c = coro()
+
+

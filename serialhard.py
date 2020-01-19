@@ -1,19 +1,20 @@
 import sys
 import math
+import numpy as np
 import serial
-import random
 import time
 from time import sleep
 import cv2.cv2 as cv
 import win32con
 import win32gui
 import win32ui
-import numpy as np
 from threading import Thread, Lock
 import winsound
 from models import *
 from utils.datasets import *
 from utils.utils import *
+
+import random
 
 ser = serial.Serial(
     port='COM4',
@@ -21,6 +22,7 @@ ser = serial.Serial(
 )
 
 hwnd = win32gui.FindWindow(None, 'MapleStory')
+hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
 if hwnd == 0:
     print("프로그램 찾지못함")
     sys.exit()
@@ -31,40 +33,99 @@ leftk = 216
 rightk = 215
 upk = 218
 downk = 217
-xy = [[0, 0], [0, 0], False, False]
+xy = [[], [], False, False]
 lock = Lock()
 
 
+class Keyboard():
+    def __init__(self):
+        self.KeyValue, self.status, self.wait = 0, 0, False
+
+    def __call__(self, KeyValue, es=40, ee=70, ss=40, se=70):
+        s, e = self.SendPacket(1, KeyValue, ss, se, es, ee)
+        print(f'(KeyBoard.Write : {KeyValue}, {s}, {e})')
+        sleep(s / 1000)
+        sleep(e / 1000)
+
+    def SendPacket(self, status, KeyValue, ss, se, es=40, ee=70):
+        if self.status == 2 and self.wait == True:
+            self.ra()
+            self.wait = False
+        if type(KeyValue) == str:
+            self.KeyValue = ord(KeyValue)
+        else:
+            self.KeyValue = KeyValue
+        self.status = status
+        s = random.randint(ss, se)
+        e = random.randint(es, ee)
+        packet = f'({status},{self.KeyValue},{s - 5},{e})'
+
+        ser.write(packet.encode())
+        return s, e
+
+    def p(self, KeyValue, es=40, ee=70, wait=False):
+        if self.KeyValue != KeyValue or self.status != 2:
+            s, e = self.SendPacket(2, KeyValue, ss=es, se=ee)
+            self.wait = wait
+            print(f'(KeyBoard.Press : {KeyValue},{s})')
+            sleep(s / 1000)
+        else:
+            e = random.randint(es, ee)
+            sleep(e / 1000)
+
+    def r(self, KeyValue, es=40, ee=70):
+        s, e = self.SendPacket(3, KeyValue, ss=es, se=ee)
+        print(f'(KeyBoard.release : {KeyValue},{s})')
+        sleep(s / 1000)
+
+    def ra(self, es=40, ee=70):
+        e = random.randint(es, ee)
+        packet = f'({4},{self.KeyValue},{e - 5},{e})'
+        ser.write(packet.encode())
+        print(f'KeyBoard.ReleaseAll')
+        sleep(e / 1000)
+
+
+key = Keyboard()
+
+
 def beep():
-    winsound.Beep(262, 2000)
+    winsound.Beep(262, 3000)
+
+
+beept = Thread(target=beep, daemon=True)
 
 
 def detect(cfg,
            data,
            weights,
            images,
-           img_size=416,
+           img_size=608,
            conf_thres=0.5,
-           nms_thres=0.5):
-    xyli, labli = [], []
+           nms_thres=0.5,
+           zoom=1):
+    xyli = []
     device = torch_utils.select_device()
     torch.backends.cudnn.benchmark = False
     model = Darknet(cfg, img_size)
     model.load_state_dict(torch.load(weights, map_location=device)['model'])
     model.to(device).eval()
-    dataloader = LoadImages(images, img_size=img_size, half=False)
+    img, *_ = letterbox(images, new_shape=img_size)
+    img = img[:, :, ::-1].transpose(2, 0, 1)
+    img = np.ascontiguousarray(img, dtype=np.float32)
+    img /= 255.0
     classes = load_classes(parse_data_cfg(data)['names'])
-    for i, (path, img, im0, vid_cap) in enumerate(dataloader):
-        img = torch.from_numpy(img).unsqueeze(0).to(device)
-        pred, _ = model(img)
-        det = non_max_suppression(pred.float(), conf_thres, nms_thres)[0]
-        if det is not None and len(det) > 0:
-            det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
-            for *xyxy, conf, cls_conf, cls in det:
-                label = '%s %.2f' % (classes[int(cls)], conf)
-                xyxy[0:4] = list(map(lambda a: int(a) * 4, xyxy[0:4]))
-                xyli.append([label, xyxy[0], xyxy[1], xyxy[2], xyxy[3]])
-            xyli.sort(key=lambda xyli: xyli[1])
+    img = torch.from_numpy(img).unsqueeze(0).to(device)
+    pred, _ = model(img)
+    det = non_max_suppression(pred.float(), conf_thres, nms_thres)[0]
+    if det is not None and len(det) > 0:
+        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], images.shape).round()
+        for *xyxy, conf, cls_conf, cls in det:
+            label = '%s %.2f' % (classes[int(cls)], conf)
+            xyxy[0:4] = list(map(lambda a: int(a) * zoom, xyxy[0:4]))
+            xyli.append([label, xyxy[0], xyxy[1], xyxy[2], xyxy[3]])
+        xyli.sort(key=lambda xyli: xyli[1])
+
     return xyli
 
 
@@ -86,7 +147,7 @@ def creen():
     signedIntsArray = cbmp.GetBitmapBits(True)
     img = np.frombuffer(signedIntsArray, dtype='uint8')
     img.shape = (h, w, 4)
-
+    img = cv.cvtColor(img, cv.COLOR_BGRA2BGR)
     win32gui.DeleteObject(cbmp.GetHandle())
     cDC.DeleteDC()
     uihdc.DeleteDC()
@@ -109,113 +170,90 @@ def match(a, img, b, c, d, e, f=True):
     minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
     cv.rectangle(cutim, maxloc, (maxloc[0] + w, maxloc[1] + h), (255, 0, 0), 1)
 
-    mxy = maxloc[0] + w / 2, maxloc[1] + h / 2, maxloc
+    mxy = maxval, [maxloc[0] + w / 2, maxloc[1] + h / 2], list(maxloc), cutim
     mxy = list(mxy)
-    return maxval, mxy, cutim
+
+    return mxy
 
 
 def scmc():
-    global xy
-    stimety, stime, beept = True, 0, Thread(target=beep, daemon=True)
+    global xy, beept
+    stimety, stime = True, 0
     while True:
         img = creen()
-        maxval, mxy, cutim = match("i", img, 87, 171, 12, 214)
-        maxval1, mxy1, cutim1 = match("r", img, 87, 171, 12, 214)
-        maxvalsb, mxysb, cutsb = match("sb", img, 712, 750, 1100, 1400, False)
-        maxvaly, mxyy, cuty = match("y", img, 87, 171, 12, 214, False)
-        if maxvalsb > 0.9:
-            lock.acquire()
-            xy[2] = True
-            lock.release()
-        if maxval > 0.99:
-            xy[0] = mxy[0:2]
-            cv.imshow('asd1', cutim)
-            cv.moveWindow('asd1', 10, 10)
-        if maxval1 > 0.999 and not math.isinf(maxval1):
-            xy[1] = mxy1[0:2]
+        mxyi = match("i", img, 87, 171, 12, 214)
+        mxysb = match("sb", img, 712, 750, 1100, 1400, False)
+        mxyr = match("r", img, 87, 171, 12, 214)
+        mxyy = match("y", img, 87, 171, 12, 214, False)
+        mxyg = match("g", img, 87, 171, 12, 214, False)
+        mxylie = match("lie", img, 200, 720, 300, 1366)
+
+        if mxyi[0] > 0.99:
+            print(mxyi)
+            xy[0] = mxyi[1][0:2]
+            print(xy)
+        if mxysb[0] > 0.9:
             lock.acquire()
             xy[3] = True
             lock.release()
-            cv.imshow('asd', cutim1)
+        if mxyr[0] > 0.999 and not math.isinf(mxyr[0]):
+            xy[1] = mxyr[1]
+            lock.acquire()
+            xy[2] = True
+            lock.release()
+            cv.imshow('asd', mxyr[3])
             cv.moveWindow('asd', 10, 200)
-        if maxvaly > 0.65:
+        if mxyy[0] > 0.65 or mxyg[0] > 0.8:
             if stimety == True:
                 stime = time.time()
                 stimety = False
             elif time.time() - stime > 5 and not beept.is_alive():
                 beept = Thread(target=beep, daemon=True)
                 beept.start()
-            cv.imshow('asd2', cuty)
-            cv.moveWindow('asd2', 10, 100)
+            else:
+                print(time.time() - stime)
         else:
             stimety = True
-        print(xy)
+
+        if mxylie[0] > 0.99 and not beept.is_alive() and not math.isinf(mxylie[0]):
+            print(mxylie[0])
+            beept = Thread(target=beep, daemon=True)
+            beept.start()
+            cv.imshow('asd1', mxylie[3])
+            cv.moveWindow('asd1', 10, 300)
         cv.waitKey(1)
 
 
-def send(b, c=40, d=70, e=40, f=70, a=1):
-    if type(b) == str:
-        b = ord(b)
-    rint = random.randint(c, d)
-    rdelay = random.randint(e, f)
-    if a == 1:
-        packet = f'({a},{b},{rint},{rdelay - 5})'
-        ser.write(packet.encode())
-        print(f'({a},{b},{rint},{rdelay})')
-        sleep(rint / 1000)
-        sleep(rdelay / 1000)
-    else:
-        packet = f'({a},{b},{rint - 5},{rdelay})'
-        ser.write(packet.encode())
-        print(f'({a},{b},{rint})')
-        sleep(rint / 1000)
-
-
 def goto():
-    tf = 0
     while True:
         if xy[0][0] - xy[1][0] >= 40:
-            send(1, a=4)
-            send(leftk, a=2)
-            send(altk)
-            send(altk)
-            send(leftk, a=3)
-            tf = 0
+            key.p(leftk)
+            key(altk)
+            key(altk)
+            key.ra()
         elif xy[1][0] - xy[0][0] >= 40:
-            send(1, a=4)
-            send(rightk, a=2)
-            send(altk)
-            send(altk)
-            send(rightk, a=3)
-            tf = 0
-        elif xy[0][0] - xy[1][0] >= 5:
-            if tf != leftk:
-                send(1, a=4)
-                send(leftk, 5, 5, a=2)
-                tf = leftk
-        elif xy[1][0] - xy[0][0] >= 5:
-            if tf != rightk:
-                send(1, a=4)
-                send(rightk, 5, 5, a=2)
-                tf = rightk
+            key.p(rightk)
+            key(altk)
+            key(altk)
+            key.ra()
+        elif xy[0][0] - xy[1][0] >= 3:
+            key.p(leftk, wait=True)
+        elif xy[1][0] - xy[0][0] >= 3:
+            key.p(rightk, wait=True)
         elif xy[0][1] > xy[1][1] + 7:
-            send(1, a=4)
-            send(altk, e=100, f=130)
-            send(96, e=3000, f=3100)
-            tf = 0
+            key(altk, 100, 130)
+            key(96, 3000, 3100)
         elif xy[0][1] < xy[1][1] - 7:
-            send(1, a=4)
-            send(downk, a=2)
-            send(altk)
-            send(downk, 1000, 1100, a=3)
-            tf = 0
+            key.p(downk)
+            key(altk)
+            key.ra(1000, 1100)
         else:
-            send(1, 500, 550, a=4)
             break
 
 
 def stkey():
-    global xy
+    global xy, beept
+    swcont = 0
 
     def atkctrl():
         nonlocal swcont, wcont
@@ -223,118 +261,196 @@ def stkey():
         if swcont >= 2 and wcont <= 2:
             wcont += 1
             if radm >= 19:
-                send(leftk, 20, 30, a=2)
-                send(altk)
-                send(altk, e=20, f=30)
-                send(leftk, a=3)
-                send('w', e=560, f=630)
+                key.p(leftk, 20, 30)
+                key(altk)
+                key(altk, 20, 30)
+                key.r(leftk)
+                key('w', 560, 630)
 
             else:
-                send(leftk, 20, 30, a=2)
-                send(altk)
-                send(altk, e=20, f=30)
-                send(leftk, a=3)
-                send(altk)
-                send('w', e=560, f=630)
+                key.p(leftk, 20, 30)
+                key(altk)
+                key(altk, 20, 30)
+                key.r(leftk)
+                key(altk)
+                key('w', 560, 630)
         else:
             if radm >= 19:
-                send(leftk, 20, 30, a=2)
-                send(altk)
-                send(altk, e=20, f=30)
-                send(leftk, a=3)
-                send(ctrlk, e=560, f=630)
+                key.p(leftk, 20, 30)
+                key(altk)
+                key(altk, 20, 30)
+                key.r(leftk)
+                key(ctrlk, 560, 630)
 
             else:
-                send(leftk, 20, 30, a=2)
-                send(altk)
-                send(altk, e=20, f=30)
-                send(leftk, a=3)
-                send(altk)
-                send(ctrlk, e=560, f=630)
+                key.p(leftk, 20, 30)
+                key(altk)
+                key(altk, 20, 30)
+                key.r(leftk)
+                key(altk)
+                key(ctrlk, 560, 630)
 
-    swcont = 0
     while True:
         swcont += 1
-        send(1, 100, 200, a=4)
-        send(96, e=900, f=930)
-        send('d', e=40, f=60)
-        send('d', e=600, f=620)
-        send(rightk, a=2)
-        send('s', e=40, f=60)
-        send('s', e=250, f=280)
-        send(rightk, 30, 50, a=3)
-        send('a', e=40, f=60)
-        send('a', e=400, f=500)
+        if swcont >= 2:
+            lieimg = creen()
+            lieli = detect('cfg\\lie.cfg', 'data\\lie.data', 'weights\\lie8.pt', lieimg)
+            if lieli:
+                cv.imwrite(f'{time.time()}.jpg', lieimg)
+                print(lieli)
+                if not beept.is_alive():
+                    beept = Thread(target=beep, daemon=True)
+                    beept.start()
+        key.ra(200, 400)
+        key(96, 900, 930)
+        key('d', 40, 60)
+        key('d', 600, 620)
+        key.p(rightk)
+        key('s', 40, 60)
+        key('s', 250, 280)
+        key.r(rightk, 30, 50)
+        key('a', 40, 60)
+        key('a', 400, 500)
 
-        send(altk)
-        send(altk)
-        send(ctrlk, e=560, f=630)
+        key(altk)
+        key(altk)
+        key(ctrlk, 560, 630)
 
-        send(altk)
-        send(altk)
-        send(ctrlk, e=560, f=590)
-        send(118, e=101, f=150)
+        key(altk)
+        key(altk)
+        key(ctrlk, 560, 590)
+        key(118, 101, 150)
 
-        send(rightk, 21, 41, a=2)
-        send(upk, 21, 41, a=2)
-        send('x', 120, 160, a=2)
-        send('x', 21, 41, a=3)
-        send(rightk, 21, 41, a=3)
-        send(upk, 171, 210, a=3)
-        send('x', e=300, f=350)
+        key.p(rightk, 21, 41)
+        key.p(upk, 21, 41)
+        key.p('x', 120, 160)
+        key.r('x', 21, 41)
+        key.r(rightk, 21, 41)
+        key.r(upk, 171, 210)
+        key('x', 300, 350)
 
         radm = random.randint(0, 2)
         if radm == 1:
-            send(altk, e=41, f=60)
+            key(altk, 41, 60)
 
-        send('e', e=800, f=900)
-        send(downk, 41, 60, a=2)
+        key('e', 800, 900)
+        key.p(downk, 41, 60)
 
         radm = random.randint(0, 2)
         if radm == 1:
-            send(altk, e=41, f=70)
+            key(altk, 41, 70)
 
-        send(altk, e=41, f=70)
-        send(downk, 530, 580, a=3)
+        key(altk, 41, 70)
+        key.r(downk, 530, 580)
 
-        send(leftk, 41, 60, a=2)
-        send('a', e=210, f=280)
-        send('s', e=550, f=650)
-        send(leftk, 41, 60, a=3)
+        key.p(leftk, 41, 60)
+        key('a', 210, 280)
+        key('s', 550, 650)
+        key.r(leftk, 41, 60)
         wcont = 0
         while True:
-            if xy[3]:
+            if xy[2]:
                 goto()
-                send(32, e=500, f=550)
+                key(32, 500, 550)
                 img = creen()
+                print(img.shape)
                 maxval, mxy, cutim = match("find", img, 100, 210, 395, 508, False)
                 print(maxval)
                 if maxval > 0.6:
                     x = 100 + mxy[2][1] + 55
                     y = 400 + mxy[2][0] + 48
-                    cv.imwrite('tmp/image.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
-                    labelli = detect('cfg\\arrow.cfg', 'data\\arrow.data', 'weights\\arrow.pt', 'tmp', 608, 0.5, 0.3)
+                    labelli = detect('cfg\\arrow.cfg', 'data\\arrow.data', 'weights\\arrow.pt',
+                                     img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
+                    print(labelli)
                     if len(labelli) == 4:
-                        for i in range(4):
+                        for i in labelli:
                             sleep(0.5)
-                            send(eval(labelli[i][0][:-5] + 'k'))
-                xy[3] = False
-            elif xy[2]:
-                send(198, e=1000, f=1100)
-                send(213, e=700, f=800)
+                            key(eval(i[0][:-5] + 'k'))
                 xy[2] = False
+            elif xy[3]:
+                key(198, 1000, 1100)
+                key(213, 700, 800)
+                xy[3] = False
             elif xy[0][0] - 33 >= 29:
                 atkctrl()
             elif xy[0][0] - 33 >= 10:
-                send(leftk, 5, 5, a=2)
+                key.p(leftk, 5, 5)
             else:
                 if wcont >= 1:
                     swcont = 0
-                send(leftk, 5, 5, a=3)
+                key.r(leftk, 5, 5)
                 break
 
 
+def zero(lr):
+    def dob(keyV, d1, d2):
+        key(keyV, 41, 70)
+        key(keyV, 41, 70)
+        key(keyV, d1, d2)
+
+    radm = random.randint(1, 101)
+    if radm <= 20:
+        key('v', 450, 500)
+        key('v', 450, 500)
+        key('v', 450, 490)
+    elif radm >= 60:
+        key('v', 41, 70)
+        key.p('v', 40, 70)
+        key.r('v', 350, 400)
+
+        key('v', 41, 70)
+        key.p('v', 40, 70)
+        key.r('v', 350, 400)
+
+        key('v', 41, 70)
+        key.p('v', 40, 70)
+        key.r('v', 350, 390)
+    else:
+        key.p('v', 1450, 1500)
+        key.r('v')
+
+    dob(upk, 41, 70)
+
+    key(altk, 41, 70)
+    key(altk, 41, 70)
+    key(altk, 70, 100)
+    radm = random.randint(0, 2)
+    if radm == 0:
+        key('c', 870, 920)
+        key('c', 870, 920)
+    else:
+        key('c', 1650, 1700)
+
+    key('s', 650, 700)
+
+    key(altk, 41, 70)
+    key(altk, 41, 70)
+    key(altk, 160, 190)
+    dob(lr, 200, 250)
+    key('s', 40, 70)
+    radm = random.randint(0, 4)
+    if radm == 0:
+        key(ctrlk, 40, 70)
+        key(ctrlk, 41, 70)
+    else:
+        key(ctrlk, 41, 70)
+
+    key.p(lr, 140, 180)
+
+    key.p(upk, 51, 70)
+    key.p(downk, 50, 70)
+    key.p(altk, 51, 70)
+    key.r(upk, 30, 50)
+    key.r(lr, 30, 50)
+    key.r(downk, 30, 50)
+    key.r(altk, 1300, 1400)
+
+    key.p(lr, 1200, 1300)
+    key.r(lr)
+
+
 sleep(1)
+
 scmct = Thread(target=scmc, daemon=True)
 scmct.start()
 scmct.join()

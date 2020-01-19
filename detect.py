@@ -133,9 +133,9 @@ def detect(cfg,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='cfg/lie.cfg', help='cfg file path')
-    parser.add_argument('--data', type=str, default='data/lie.data', help='coco.data file path')
-    parser.add_argument('--weights', type=str, default='weights/best.pt', help='path to weights file')
+    parser.add_argument('--cfg', type=str, default='cfg\\lie.cfg', help='cfg file path')
+    parser.add_argument('--data', type=str, default='data\\lie.data', help='coco.data file path')
+    parser.add_argument('--weights', type=str, default='weights\\lie8.pt', help='path to weights file')
     parser.add_argument('--images', type=str, default='data\\samples', help='path to images')
     parser.add_argument('--img-size', type=int, default=608, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.5, help='object confidence threshold')
