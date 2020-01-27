@@ -2,5 +2,3 @@ classes=1
 train=data/lie.txt
 valid=data/lie.txt
 names=data/lie.names
-backup=backup/
-eval=coco

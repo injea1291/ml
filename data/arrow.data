@@ -2,5 +2,3 @@ classes=4
 train=data/arrow.txt
 valid=data/arrow.txt
 names=data/arrow.names
-backup=backup/
-eval=coco

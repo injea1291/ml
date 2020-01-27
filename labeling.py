@@ -131,7 +131,7 @@ def drawrect(event, x, y, flags, param):
 
 
 draw, start, rectli, di, dcount = False, False, [], [], 0
-labelimg, sm, zoom = "output", 3, 2
+labelimg, sm, zoom = "lie", 3, 0
 
 d = glob.glob(f"images\\{labelimg}\\*.jpg")
 

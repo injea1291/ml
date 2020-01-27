@@ -42,7 +42,6 @@ def globli(a, tj):
     di.sort()
     return di
 
-
 def renamefile(a, tj, count):
     b = glob.glob(f"images\\{a}\\*.{tj}")
     for c, i in enumerate(b):
@@ -53,14 +52,22 @@ def renamefile(a, tj, count):
 
 # renamefile('output','png',130)
 
+def renamefile1(a,a1,b,b1,c,c1):
+    dri = globli(f"{a}\\{a1}", f'{c}')
+    for i in dri:
+        os.rename(f'{a}\\{a1}\\{str(i)}.{c}', f'{b}\\{b1}\\{str(i)}.{c1}')
+        print(i)
+
+
+# renamefile1('images', 'arrow', 'images', 'result', 'jpg', 'png')
+
 def a2(name):
-    labelo = f"images\\{name}"
-    dri = globli(labelo, "jpg")
+    dri = globli(f"images\\{name}", "jpg")
     f = open(f"data\\{name}.txt", 'w')
     for i in dri:
         f.write(f"images/result/{i}.jpg\n")
     f.close()
-a2('arrow')
+a2('lie')
 
 def label(labelimg, zoom, labellist):
     dri = globli(f'labels\\{labelimg}', "txt")
@@ -80,7 +87,7 @@ def label(labelimg, zoom, labellist):
             f1.write(data)
         f.close()
         f1.close()
-label('arrow',4,arrows)
+# label('lie', 1, ['lie'])
 
 def makex4(dir, dir1):
     dri = globli(dir, "jpg")

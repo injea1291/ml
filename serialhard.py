@@ -1,5 +1,4 @@
 import sys
-
 import serial
 import time
 from time import sleep
@@ -91,34 +90,42 @@ beep = Thread(target=winsound.Beep, args=(300, 3000,))
 
 
 def detect(cfg,
-           data,
+           names,
            weights,
            images,
            img_size=608,
            conf_thres=0.5,
-           nms_thres=0.5,
+           iou_thres=0.5,
            zoom=1):
     xyli = []
     device = torch_utils.select_device()
-    torch.backends.cudnn.benchmark = False
     model = Darknet(cfg, img_size)
+    attempt_download(weights)
     model.load_state_dict(torch.load(weights, map_location=device)['model'])
     model.to(device).eval()
-    img, *_ = letterbox(images, new_shape=img_size)
-    img = img[:, :, ::-1].transpose(2, 0, 1)
-    img = np.ascontiguousarray(img, dtype=np.float32)
-    img /= 255.0
-    classes = load_classes(parse_data_cfg(data)['names'])
-    img = torch.from_numpy(img).unsqueeze(0).to(device)
-    pred, _ = model(img)
-    det = non_max_suppression(pred.float(), conf_thres, nms_thres)[0]
-    if det is not None and len(det) > 0:
-        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], images.shape).round()
-        for *xyxy, conf, cls_conf, cls in det:
-            label = '%s %.2f' % (classes[int(cls)], conf)
-            xyxy[0:4] = list(map(lambda a: int(a) * zoom, xyxy[0:4]))
-            xyli.append([label, xyxy[0], xyxy[1], xyxy[2], xyxy[3]])
-        xyli.sort(key=lambda xyli: xyli[1])
+
+    img = letterbox(images, new_shape=img_size)[0]
+
+    # Convert
+    img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+    img = np.ascontiguousarray(img, dtype=np.float32)  # uint8 to fp16/fp32
+    img /= 255.0  # 0 - 255 to 0.0 - 1.0
+
+    classes = load_classes(names)
+    img = torch.from_numpy(img).to(device)
+    if img.ndimension() == 3:
+        img = img.unsqueeze(0)
+    pred = model(img)[0]
+    pred = non_max_suppression(pred, conf_thres, iou_thres, classes=None, agnostic=False)
+    for i, det in enumerate(pred):  # detections per image
+        if det is not None and len(det):
+            det[:, :4] = scale_coords(img.shape[2:], det[:, :4], images.shape).round()
+
+            for *xyxy, conf, cls in det:
+                label = '%s %.2f' % (classes[int(cls)], conf)
+                xyxy[0:4] = list(map(lambda a: int(a) * zoom, xyxy[0:4]))
+                xyli.append([label, xyxy[0], xyxy[1], xyxy[2], xyxy[3]])
+            xyli.sort(key=lambda xyli: xyli[1])
 
     return xyli
 
@@ -251,7 +258,7 @@ def useai():
         time.sleep(1)
         if time.time() - stime > 5 and xy[4] == True:
             lieimg = creen()
-            lieli = detect('cfg\\lie.cfg', 'data\\lie.data', 'weights\\lie8.pt', lieimg)
+            lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
             if lieli:
                 print(lieli)
                 cv.rectangle(lieimg, (lieli[0][1], lieli[0][2]), (lieli[0][3], lieli[0][4]), (0, 0, 0))
@@ -377,7 +384,7 @@ def stkey():
             if mxy[0] > 0.6:
                 x = 100 + mxy[2][1] + 55
                 y = 400 + mxy[2][0] + 48
-                labelli = detect('cfg\\arrow.cfg', 'data\\arrow.data', 'weights\\arrow.pt',
+                labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
                                  img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
                 print(labelli)
                 if len(labelli) == 4:
@@ -455,8 +462,6 @@ def zero(lr):
 
 
 sleep(1)
-
-
 scmct = Thread(target=scmc, daemon=True)
 useait = Thread(target=useai, daemon=True)
 scmct.start()
