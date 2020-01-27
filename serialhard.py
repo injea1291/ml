@@ -1,6 +1,5 @@
 import sys
-import math
-import numpy as np
+
 import serial
 import time
 from time import sleep
@@ -33,7 +32,7 @@ leftk = 216
 rightk = 215
 upk = 218
 downk = 217
-xy = [[], [], False, False]
+xy = [[], [], False, False, True]
 lock = Lock()
 
 
@@ -48,6 +47,8 @@ class Keyboard():
         sleep(e / 1000)
 
     def SendPacket(self, status, KeyValue, ss, se, es=40, ee=70):
+        if xy[2]:
+            raise
         if self.status == 2 and self.wait == True:
             self.ra()
             self.wait = False
@@ -59,7 +60,6 @@ class Keyboard():
         s = random.randint(ss, se)
         e = random.randint(es, ee)
         packet = f'({status},{self.KeyValue},{s - 5},{e})'
-
         ser.write(packet.encode())
         return s, e
 
@@ -87,13 +87,7 @@ class Keyboard():
 
 
 key = Keyboard()
-
-
-def beep():
-    winsound.Beep(262, 3000)
-
-
-beept = Thread(target=beep, daemon=True)
+beep = Thread(target=winsound.Beep, args=(300, 3000,))
 
 
 def detect(cfg,
@@ -177,7 +171,7 @@ def match(a, img, b, c, d, e, f=True):
 
 
 def scmc():
-    global xy, beept
+    global xy, beep
     stimety, stime = True, 0
     while True:
         img = creen()
@@ -189,17 +183,16 @@ def scmc():
         mxylie = match("lie", img, 200, 720, 300, 1366)
 
         if mxyi[0] > 0.99:
-            print(mxyi)
             xy[0] = mxyi[1][0:2]
-            print(xy)
         if mxysb[0] > 0.9:
             lock.acquire()
             xy[3] = True
             lock.release()
-        if mxyr[0] > 0.999 and not math.isinf(mxyr[0]):
+        if mxyr[0] > 0.999 and not math.isinf(mxyr[0]) and xy[4]:
             xy[1] = mxyr[1]
             lock.acquire()
             xy[2] = True
+            xy[4] = False
             lock.release()
             cv.imshow('asd', mxyr[3])
             cv.moveWindow('asd', 10, 200)
@@ -207,18 +200,18 @@ def scmc():
             if stimety == True:
                 stime = time.time()
                 stimety = False
-            elif time.time() - stime > 5 and not beept.is_alive():
-                beept = Thread(target=beep, daemon=True)
-                beept.start()
+            elif time.time() - stime > 5 and not beep.is_alive():
+                beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                beep.start()
             else:
                 print(time.time() - stime)
         else:
             stimety = True
 
-        if mxylie[0] > 0.99 and not beept.is_alive() and not math.isinf(mxylie[0]):
+        if mxylie[0] > 0.99 and not beep.is_alive() and not math.isinf(mxylie[0]):
             print(mxylie[0])
-            beept = Thread(target=beep, daemon=True)
-            beept.start()
+            beep = Thread(target=winsound.Beep, args=(300, 3000,))
+            beep.start()
             cv.imshow('asd1', mxylie[3])
             cv.moveWindow('asd1', 10, 300)
         cv.waitKey(1)
@@ -251,8 +244,26 @@ def goto():
             break
 
 
+def useai():
+    global xy, beep
+    stime = time.time()
+    while True:
+        time.sleep(1)
+        if time.time() - stime > 5 and xy[4] == True:
+            lieimg = creen()
+            lieli = detect('cfg\\lie.cfg', 'data\\lie.data', 'weights\\lie8.pt', lieimg)
+            if lieli:
+                print(lieli)
+                cv.rectangle(lieimg, (lieli[0][1], lieli[0][2]), (lieli[0][3], lieli[0][4]), (0, 0, 0))
+                cv.imwrite(f'{time.time()}.jpg', lieimg)
+                if not beep.is_alive():
+                    beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                    beep.start()
+            stime = time.time()
+
+
 def stkey():
-    global xy, beept
+    global xy, beep
     swcont = 0
 
     def atkctrl():
@@ -291,95 +302,89 @@ def stkey():
                 key(ctrlk, 560, 630)
 
     while True:
-        swcont += 1
-        if swcont >= 2:
-            lieimg = creen()
-            lieli = detect('cfg\\lie.cfg', 'data\\lie.data', 'weights\\lie8.pt', lieimg)
-            if lieli:
-                cv.imwrite(f'{time.time()}.jpg', lieimg)
-                print(lieli)
-                if not beept.is_alive():
-                    beept = Thread(target=beep, daemon=True)
-                    beept.start()
-        key.ra(200, 400)
-        key(96, 900, 930)
-        key('d', 40, 60)
-        key('d', 600, 620)
-        key.p(rightk)
-        key('s', 40, 60)
-        key('s', 250, 280)
-        key.r(rightk, 30, 50)
-        key('a', 40, 60)
-        key('a', 400, 500)
+        try:
+            swcont += 1
+            key.ra(200, 400)
+            key(96, 900, 930)
+            key('d', 40, 60)
+            key('d', 600, 620)
+            key.p(rightk)
+            key('s', 40, 60)
+            key('s', 250, 280)
+            key.r(rightk, 30, 50)
+            key('a', 40, 60)
+            key('a', 400, 500)
 
-        key(altk)
-        key(altk)
-        key(ctrlk, 560, 630)
+            key(altk)
+            key(altk)
+            key(ctrlk, 560, 630)
 
-        key(altk)
-        key(altk)
-        key(ctrlk, 560, 590)
-        key(118, 101, 150)
+            key(altk)
+            key(altk)
+            key(ctrlk, 560, 590)
+            key(118, 101, 150)
 
-        key.p(rightk, 21, 41)
-        key.p(upk, 21, 41)
-        key.p('x', 120, 160)
-        key.r('x', 21, 41)
-        key.r(rightk, 21, 41)
-        key.r(upk, 171, 210)
-        key('x', 300, 350)
+            key.p(rightk, 21, 41)
+            key.p(upk, 21, 41)
+            key.p('x', 120, 160)
+            key.r('x', 21, 41)
+            key.r(rightk, 21, 41)
+            key.r(upk, 171, 210)
+            key('x', 300, 350)
 
-        radm = random.randint(0, 2)
-        if radm == 1:
-            key(altk, 41, 60)
+            radm = random.randint(0, 2)
+            if radm == 1:
+                key(altk, 41, 60)
 
-        key('e', 800, 900)
-        key.p(downk, 41, 60)
+            key('e', 800, 900)
+            key.p(downk, 41, 60)
 
-        radm = random.randint(0, 2)
-        if radm == 1:
+            radm = random.randint(0, 2)
+            if radm == 1:
+                key(altk, 41, 70)
+
             key(altk, 41, 70)
+            key.r(downk, 530, 580)
 
-        key(altk, 41, 70)
-        key.r(downk, 530, 580)
-
-        key.p(leftk, 41, 60)
-        key('a', 210, 280)
-        key('s', 550, 650)
-        key.r(leftk, 41, 60)
-        wcont = 0
-        while True:
-            if xy[2]:
-                goto()
-                key(32, 500, 550)
-                img = creen()
-                print(img.shape)
-                maxval, mxy, cutim = match("find", img, 100, 210, 395, 508, False)
-                print(maxval)
-                if maxval > 0.6:
-                    x = 100 + mxy[2][1] + 55
-                    y = 400 + mxy[2][0] + 48
-                    labelli = detect('cfg\\arrow.cfg', 'data\\arrow.data', 'weights\\arrow.pt',
-                                     img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
-                    print(labelli)
-                    if len(labelli) == 4:
-                        for i in labelli:
-                            sleep(0.5)
-                            key(eval(i[0][:-5] + 'k'))
-                xy[2] = False
-            elif xy[3]:
-                key(198, 1000, 1100)
-                key(213, 700, 800)
-                xy[3] = False
-            elif xy[0][0] - 33 >= 29:
-                atkctrl()
-            elif xy[0][0] - 33 >= 10:
-                key.p(leftk, 5, 5)
-            else:
-                if wcont >= 1:
-                    swcont = 0
-                key.r(leftk, 5, 5)
-                break
+            key.p(leftk, 41, 60)
+            key('a', 210, 280)
+            key('s', 550, 650)
+            key.r(leftk, 41, 60)
+            wcont = 0
+            while True:
+                if xy[3]:
+                    key(198, 1000, 1100)
+                    key(213, 700, 800)
+                    xy[3] = False
+                elif xy[0][0] - 33 >= 29:
+                    atkctrl()
+                elif xy[0][0] - 33 >= 10:
+                    key.p(leftk, 5, 5)
+                else:
+                    if wcont >= 1:
+                        swcont = 0
+                    key.r(leftk, 5, 5)
+                    break
+        except:
+            xy[2] = False
+            print(xy)
+            goto()
+            key(32, 500, 550)
+            img = creen()
+            print(img.shape)
+            mxy = match("find", img, 100, 210, 395, 508, False)
+            print(mxy[0])
+            if mxy[0] > 0.6:
+                x = 100 + mxy[2][1] + 55
+                y = 400 + mxy[2][0] + 48
+                labelli = detect('cfg\\arrow.cfg', 'data\\arrow.data', 'weights\\arrow.pt',
+                                 img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
+                print(labelli)
+                if len(labelli) == 4:
+                    for i in labelli:
+                        sleep(0.5)
+                        key(eval(i[0][:-5] + 'k'))
+            xy[4] = True
 
 
 def zero(lr):
@@ -451,6 +456,9 @@ def zero(lr):
 
 sleep(1)
 
+
 scmct = Thread(target=scmc, daemon=True)
+useait = Thread(target=useai, daemon=True)
 scmct.start()
-scmct.join()
+useait.start()
+stkey()
