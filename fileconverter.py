@@ -50,7 +50,7 @@ def renamefile(a, tj, count):
         os.rename(i, f'images\\{a}\\{c}.jpg')
         print(c, i)
 
-# renamefile('output','png',130)
+# renamefile('output','png',373)
 
 def renamefile1(a,a1,b,b1,c,c1):
     dri = globli(f"{a}\\{a1}", f'{c}')
@@ -67,7 +67,7 @@ def a2(name):
     for i in dri:
         f.write(f"images/result/{i}.jpg\n")
     f.close()
-a2('lie')
+# a2('arrow')
 
 def label(labelimg, zoom, labellist):
     dri = globli(f'labels\\{labelimg}', "txt")
@@ -87,7 +87,7 @@ def label(labelimg, zoom, labellist):
             f1.write(data)
         f.close()
         f1.close()
-# label('lie', 1, ['lie'])
+# label('arrow', 4, arrows)
 
 def makex4(dir, dir1):
     dri = globli(dir, "jpg")

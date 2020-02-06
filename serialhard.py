@@ -25,13 +25,8 @@ if hwnd == 0:
     print("프로그램 찾지못함")
     sys.exit()
 
-altk = 130
-ctrlk = 128
-leftk = 216
-rightk = 215
-upk = 218
-downk = 217
-xy = [[], [], False, False, True]
+altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
+xy = [[], [], False, False, True, True]  # 캐릭터위치, 룬 위치, 룬, 심, 인공지능, 자리
 lock = Lock()
 
 
@@ -181,14 +176,16 @@ def scmc():
     global xy, beep
     stimety, stime = True, 0
     while True:
+        lock.acquire()
         img = creen()
+        lock.release()
         mxyi = match("i", img, 87, 171, 12, 214)
         mxysb = match("sb", img, 712, 750, 1100, 1400, False)
         mxyr = match("r", img, 87, 171, 12, 214)
         mxyy = match("y", img, 87, 171, 12, 214, False)
         mxyg = match("g", img, 87, 171, 12, 214, False)
         mxylie = match("lie", img, 200, 720, 300, 1366)
-
+        mxybs = match("b", img, 65, 85, 580, 650, False)
         if mxyi[0] > 0.99:
             xy[0] = mxyi[1][0:2]
         if mxysb[0] > 0.9:
@@ -215,12 +212,14 @@ def scmc():
         else:
             stimety = True
 
-        if mxylie[0] > 0.99 and not beep.is_alive() and not math.isinf(mxylie[0]):
-            print(mxylie[0])
+        if mxylie[0] > 0.99 and not math.isinf(mxylie[0]) and not beep.is_alive():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
-            cv.imshow('asd1', mxylie[3])
-            cv.moveWindow('asd1', 10, 300)
+
+        if mxybs[0] > 0.6:
+            lock.acquire()
+            xy[5] = True
+            lock.release()
         cv.waitKey(1)
 
 
@@ -261,7 +260,6 @@ def useai():
             lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
             if lieli:
                 print(lieli)
-                cv.rectangle(lieimg, (lieli[0][1], lieli[0][2]), (lieli[0][3], lieli[0][4]), (0, 0, 0))
                 cv.imwrite(f'{time.time()}.jpg', lieimg)
                 if not beep.is_alive():
                     beep = Thread(target=winsound.Beep, args=(300, 3000,))
@@ -272,196 +270,230 @@ def useai():
 def stkey():
     global xy, beep
     swcont = 0
+    def caden():
+        nonlocal swcont
 
-    def atkctrl():
-        nonlocal swcont, wcont
-        radm = random.randint(0, 20)
-        if swcont >= 2 and wcont <= 2:
-            wcont += 1
-            if radm >= 19:
-                key.p(leftk, 20, 30)
-                key(altk)
-                key(altk, 20, 30)
-                key.r(leftk)
-                key('w', 560, 630)
+        def atkctrl():
+            nonlocal swcont, wcont
+            radm = random.randint(0, 20)
+            if swcont >= 2 and wcont <= 2:
+                wcont += 1
+                if radm >= 19:
+                    key.p(leftk, 20, 30)
+                    key(altk)
+                    key(altk, 20, 30)
+                    key.r(leftk)
+                    key('w', 560, 630)
 
+                else:
+                    key.p(leftk, 20, 30)
+                    key(altk)
+                    key(altk, 20, 30)
+                    key.r(leftk)
+                    key(altk)
+                    key('w', 560, 630)
             else:
-                key.p(leftk, 20, 30)
-                key(altk)
-                key(altk, 20, 30)
-                key.r(leftk)
-                key(altk)
-                key('w', 560, 630)
+                if radm >= 19:
+                    key.p(leftk, 20, 30)
+                    key(altk)
+                    key(altk, 20, 30)
+                    key.r(leftk)
+                    key(ctrlk, 560, 630)
+
+                else:
+                    key.p(leftk, 20, 30)
+                    key(altk)
+                    key(altk, 20, 30)
+                    key.r(leftk)
+                    key(altk)
+                    key(ctrlk, 560, 630)
+
+        swcont += 1
+        key.ra(200, 400)
+        key(96, 900, 930)
+        key('d', 40, 60)
+        key('d', 600, 620)
+        key.p(rightk)
+        key('s', 40, 60)
+        key('s', 250, 280)
+        key.r(rightk, 30, 50)
+        key('a', 40, 60)
+        key('a', 400, 500)
+
+        key(altk)
+        key(altk)
+        key(ctrlk, 560, 630)
+
+        key(altk)
+        key(altk)
+        key(ctrlk, 560, 590)
+        key(118, 101, 150)
+
+        key.p(rightk, 21, 41)
+        key.p(upk, 21, 41)
+        key.p('x', 120, 160)
+        key.r('x', 21, 41)
+        key.r(rightk, 21, 41)
+        key.r(upk, 171, 210)
+        key('x', 300, 350)
+
+        radm = random.randint(0, 2)
+        if radm == 1:
+            key(altk, 41, 60)
+
+        key('e', 800, 900)
+        key.p(downk, 41, 60)
+
+        radm = random.randint(0, 2)
+        if radm == 1:
+            key(altk, 41, 70)
+
+        key(altk, 41, 70)
+        key.r(downk, 530, 580)
+
+        key.p(leftk, 41, 60)
+        key('a', 210, 280)
+        key('s', 550, 650)
+        key.r(leftk, 41, 60)
+        wcont = 0
+        while True:
+            if xy[3]:
+                key(198, 1000, 1100)
+                key(213, 700, 800)
+                xy[3] = False
+            elif xy[0][0] - 33 >= 29:
+                atkctrl()
+            elif xy[0][0] - 33 >= 10:
+                key.p(leftk, 5, 5)
+            else:
+                if wcont >= 1:
+                    swcont = 0
+                key.r(leftk, 5, 5)
+                break
+
+    def zero(lr):
+        def dob(keyV, d1, d2):
+            key(keyV, 41, 70)
+            key(keyV, 41, 70)
+            key(keyV, d1, d2)
+
+        radm = random.randint(1, 101)
+        if radm <= 20:
+            key('v', 450, 500)
+            key('v', 450, 500)
+            key('v', 450, 490)
+        elif radm >= 60:
+            key('v', 41, 70)
+            key.p('v', 40, 70)
+            key.r('v', 350, 400)
+
+            key('v', 41, 70)
+            key.p('v', 40, 70)
+            key.r('v', 350, 400)
+
+            key('v', 41, 70)
+            key.p('v', 40, 70)
+            key.r('v', 350, 390)
         else:
-            if radm >= 19:
-                key.p(leftk, 20, 30)
-                key(altk)
-                key(altk, 20, 30)
-                key.r(leftk)
-                key(ctrlk, 560, 630)
+            key.p('v', 1450, 1500)
+            key.r('v')
 
-            else:
-                key.p(leftk, 20, 30)
-                key(altk)
-                key(altk, 20, 30)
-                key.r(leftk)
-                key(altk)
-                key(ctrlk, 560, 630)
+        dob(upk, 41, 70)
+
+        key(altk, 41, 70)
+        key(altk, 41, 70)
+        key(altk, 70, 100)
+        radm = random.randint(0, 2)
+        if radm == 0:
+            key('c', 870, 920)
+            key('c', 870, 920)
+        else:
+            key('c', 1650, 1700)
+
+        key('s', 650, 700)
+
+        key(altk, 41, 70)
+        key(altk, 41, 70)
+        key(altk, 160, 190)
+        dob(lr, 200, 250)
+        key('s', 40, 70)
+        radm = random.randint(0, 4)
+        if radm == 0:
+            key(ctrlk, 40, 70)
+            key(ctrlk, 41, 70)
+        else:
+            key(ctrlk, 41, 70)
+
+        key.p(downk, 41, 60)
+
+        radm = random.randint(0, 2)
+        if radm == 1:
+            key(altk, 41, 70)
+
+        key(altk, 41, 70)
+        key.r(downk, 530, 580)
+
+        key.p(lr, 1200, 1300)
+        key.r(lr)
 
     while True:
-        try:
-            swcont += 1
-            key.ra(200, 400)
-            key(96, 900, 930)
-            key('d', 40, 60)
-            key('d', 600, 620)
-            key.p(rightk)
-            key('s', 40, 60)
-            key('s', 250, 280)
-            key.r(rightk, 30, 50)
-            key('a', 40, 60)
-            key('a', 400, 500)
-
-            key(altk)
-            key(altk)
-            key(ctrlk, 560, 630)
-
-            key(altk)
-            key(altk)
-            key(ctrlk, 560, 590)
-            key(118, 101, 150)
-
-            key.p(rightk, 21, 41)
-            key.p(upk, 21, 41)
-            key.p('x', 120, 160)
-            key.r('x', 21, 41)
-            key.r(rightk, 21, 41)
-            key.r(upk, 171, 210)
-            key('x', 300, 350)
-
-            radm = random.randint(0, 2)
-            if radm == 1:
-                key(altk, 41, 60)
-
-            key('e', 800, 900)
-            key.p(downk, 41, 60)
-
-            radm = random.randint(0, 2)
-            if radm == 1:
-                key(altk, 41, 70)
-
-            key(altk, 41, 70)
-            key.r(downk, 530, 580)
-
-            key.p(leftk, 41, 60)
-            key('a', 210, 280)
-            key('s', 550, 650)
-            key.r(leftk, 41, 60)
-            wcont = 0
+        if not xy[5]:
+            try:
+                caden()
+            except:
+                xy[2] = False
+                time.sleep(1)
+                key.ra()
+                goto()
+                key(32, 500, 550)
+                img = creen()
+                mxy = match("find", img, 100, 210, 395, 508, False)
+                print(mxy[0])
+                if mxy[0] > 0.6:
+                    x = 100 + mxy[2][1] + 55
+                    y = 400 + mxy[2][0] + 48
+                    cv.imwrite(f'r{time.time()}.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
+                    labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
+                                     img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
+                    print(labelli)
+                    if len(labelli) == 4:
+                        for i in labelli:
+                            sleep(0.5)
+                            key(eval(i[0][:-5] + 'k'))
+                xy[4] = True
+        else:
+            stimety = False
+            stime = time.time()
             while True:
-                if xy[3]:
-                    key(198, 1000, 1100)
-                    key(213, 700, 800)
-                    xy[3] = False
-                elif xy[0][0] - 33 >= 29:
-                    atkctrl()
-                elif xy[0][0] - 33 >= 10:
-                    key.p(leftk, 5, 5)
-                else:
-                    if wcont >= 1:
-                        swcont = 0
-                    key.r(leftk, 5, 5)
-                    break
-        except:
-            xy[2] = False
-            print(xy)
-            goto()
-            key(32, 500, 550)
-            img = creen()
-            print(img.shape)
-            mxy = match("find", img, 100, 210, 395, 508, False)
-            print(mxy[0])
-            if mxy[0] > 0.6:
-                x = 100 + mxy[2][1] + 55
-                y = 400 + mxy[2][0] + 48
-                labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
-                                 img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
-                print(labelli)
-                if len(labelli) == 4:
-                    for i in labelli:
-                        sleep(0.5)
-                        key(eval(i[0][:-5] + 'k'))
-            xy[4] = True
+                player = match("y", creen(), 87, 171, 12, 214, False)
+                if player[0] > 0.65:
+                    stimety = True
+
+                if time.time() - stime > 6:
+                    if stimety == False:
+                        xy[5] = False
+                        break
+                    stimety = False
+                    stime = time.time()
+                    key(esc)
+                    key(176)
+                    key(rightk, 200, 300)
+                    key(176, 4000, 4100)
 
 
-def zero(lr):
-    def dob(keyV, d1, d2):
-        key(keyV, 41, 70)
-        key(keyV, 41, 70)
-        key(keyV, d1, d2)
 
-    radm = random.randint(1, 101)
-    if radm <= 20:
-        key('v', 450, 500)
-        key('v', 450, 500)
-        key('v', 450, 490)
-    elif radm >= 60:
-        key('v', 41, 70)
-        key.p('v', 40, 70)
-        key.r('v', 350, 400)
-
-        key('v', 41, 70)
-        key.p('v', 40, 70)
-        key.r('v', 350, 400)
-
-        key('v', 41, 70)
-        key.p('v', 40, 70)
-        key.r('v', 350, 390)
-    else:
-        key.p('v', 1450, 1500)
-        key.r('v')
-
-    dob(upk, 41, 70)
-
-    key(altk, 41, 70)
-    key(altk, 41, 70)
-    key(altk, 70, 100)
-    radm = random.randint(0, 2)
-    if radm == 0:
-        key('c', 870, 920)
-        key('c', 870, 920)
-    else:
-        key('c', 1650, 1700)
-
-    key('s', 650, 700)
-
-    key(altk, 41, 70)
-    key(altk, 41, 70)
-    key(altk, 160, 190)
-    dob(lr, 200, 250)
-    key('s', 40, 70)
-    radm = random.randint(0, 4)
-    if radm == 0:
-        key(ctrlk, 40, 70)
-        key(ctrlk, 41, 70)
-    else:
-        key(ctrlk, 41, 70)
-
-    key.p(lr, 140, 180)
-
-    key.p(upk, 51, 70)
-    key.p(downk, 50, 70)
-    key.p(altk, 51, 70)
-    key.r(upk, 30, 50)
-    key.r(lr, 30, 50)
-    key.r(downk, 30, 50)
-    key.r(altk, 1300, 1400)
-
-    key.p(lr, 1200, 1300)
-    key.r(lr)
+def asdfasdf():
+    lieimg = cv.imread('1580544331.93303.jpg')
+    lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\best.pt', lieimg)
+    print(lieli)
+    cv.rectangle(lieimg, (lieli[0][1], lieli[0][2]), (lieli[0][3], lieli[0][4]), (0, 0, 0))
+    cv.imshow('asd', lieimg)
+    cv.waitKey(0)
 
 
-sleep(1)
+
+
+beep.start()
 scmct = Thread(target=scmc, daemon=True)
 useait = Thread(target=useai, daemon=True)
 scmct.start()
