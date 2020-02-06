@@ -26,13 +26,22 @@ if hwnd == 0:
     sys.exit()
 
 altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, True, True]  # 캐릭터위치, 룬 위치, 룬, 심, 인공지능, 자리
+xy = [[], [], False, False, True]  # 캐릭터위치, 룬 위치, 룬, 심, 보스
+cren = []
 lock = Lock()
+
+
+class findRhun(Exception):
+    pass
+
+
+class findBoss(Exception):
+    pass
 
 
 class Keyboard():
     def __init__(self):
-        self.KeyValue, self.status, self.wait = 0, 0, False
+        self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
 
     def __call__(self, KeyValue, es=40, ee=70, ss=40, se=70):
         s, e = self.SendPacket(1, KeyValue, ss, se, es, ee)
@@ -41,8 +50,11 @@ class Keyboard():
         sleep(e / 1000)
 
     def SendPacket(self, status, KeyValue, ss, se, es=40, ee=70):
-        if xy[2]:
-            raise
+        if self.raseof:
+            if xy[2]:
+                raise findRhun
+            if xy[4]:
+                raise findBoss
         if self.status == 2 and self.wait == True:
             self.ra()
             self.wait = False
@@ -78,6 +90,9 @@ class Keyboard():
         ser.write(packet.encode())
         print(f'KeyBoard.ReleaseAll')
         sleep(e / 1000)
+
+    def change(self, raseof):
+        self.raseof = raseof
 
 
 key = Keyboard()
@@ -173,30 +188,27 @@ def match(a, img, b, c, d, e, f=True):
 
 
 def scmc():
-    global xy, beep
+    global xy, beep, cren
     stimety, stime = True, 0
     while True:
-        lock.acquire()
-        img = creen()
-        lock.release()
-        mxyi = match("i", img, 87, 171, 12, 214)
-        mxysb = match("sb", img, 712, 750, 1100, 1400, False)
-        mxyr = match("r", img, 87, 171, 12, 214)
-        mxyy = match("y", img, 87, 171, 12, 214, False)
-        mxyg = match("g", img, 87, 171, 12, 214, False)
-        mxylie = match("lie", img, 200, 720, 300, 1366)
-        mxybs = match("b", img, 65, 85, 580, 650, False)
+        cren = creen()
+        mxyi = match("i", cren, 87, 171, 12, 214)
+        mxysb = match("sb", cren, 712, 750, 1100, 1400, False)
+        mxyr = match("r", cren, 87, 171, 12, 214)
+        mxyy = match("y", cren, 87, 171, 12, 214, False)
+        mxyg = match("g", cren, 87, 171, 12, 214, False)
+        mxylie = match("lie", cren, 200, 720, 300, 1366)
+        mxybs = match("b", cren, 65, 85, 580, 650, False)
         if mxyi[0] > 0.99:
             xy[0] = mxyi[1][0:2]
         if mxysb[0] > 0.9:
             lock.acquire()
             xy[3] = True
             lock.release()
-        if mxyr[0] > 0.999 and not math.isinf(mxyr[0]) and xy[4]:
+        if mxyr[0] > 0.999 and not math.isinf(mxyr[0]):
             xy[1] = mxyr[1]
             lock.acquire()
             xy[2] = True
-            xy[4] = False
             lock.release()
             cv.imshow('asd', mxyr[3])
             cv.moveWindow('asd', 10, 200)
@@ -218,7 +230,7 @@ def scmc():
 
         if mxybs[0] > 0.6:
             lock.acquire()
-            xy[5] = True
+            xy[4] = True
             lock.release()
         cv.waitKey(1)
 
@@ -251,12 +263,12 @@ def goto():
 
 
 def useai():
-    global xy, beep
+    global xy, beep, cren
     stime = time.time()
     while True:
         time.sleep(1)
-        if time.time() - stime > 5 and xy[4] == True:
-            lieimg = creen()
+        if time.time() - stime > 5 and not xy[2]:
+            lieimg = cren.copy()
             lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
             if lieli:
                 print(lieli)
@@ -268,8 +280,9 @@ def useai():
 
 
 def stkey():
-    global xy, beep
+    global xy, beep, cren
     swcont = 0
+
     def caden():
         nonlocal swcont
 
@@ -437,41 +450,43 @@ def stkey():
         key.r(lr)
 
     while True:
-        if not xy[5]:
-            try:
-                caden()
-            except:
-                xy[2] = False
-                time.sleep(1)
-                key.ra()
-                goto()
-                key(32, 500, 550)
-                img = creen()
-                mxy = match("find", img, 100, 210, 395, 508, False)
-                print(mxy[0])
-                if mxy[0] > 0.6:
-                    x = 100 + mxy[2][1] + 55
-                    y = 400 + mxy[2][0] + 48
-                    cv.imwrite(f'r{time.time()}.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
-                    labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
-                                     img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
-                    print(labelli)
-                    if len(labelli) == 4:
-                        for i in labelli:
-                            sleep(0.5)
-                            key(eval(i[0][:-5] + 'k'))
-                xy[4] = True
-        else:
+        try:
+            key.change(True)
+            caden()
+        except findRhun:
+            key.change(False)
+            time.sleep(1)
+            key.ra()
+            goto()
+            key(32, 500, 550)
+            img = cren.copy()
+            mxy = match("find", img, 100, 210, 395, 508, False)
+            print(mxy[0])
+            if mxy[0] > 0.6:
+                x = 100 + mxy[2][1] + 55
+                y = 400 + mxy[2][0] + 48
+                cv.imwrite(f'r{time.time()}.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
+                labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
+                                 img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
+                print(labelli)
+                if len(labelli) == 4:
+                    for i in labelli:
+                        sleep(0.5)
+                        key(eval(i[0][:-5] + 'k'))
+            xy[2] = False
+        except findBoss:
+            xy[2] = True
+            key.change(False)
             stimety = False
             stime = time.time()
             while True:
-                player = match("y", creen(), 87, 171, 12, 214, False)
+                player = match("y", cren, 87, 171, 12, 214, False)
                 if player[0] > 0.65:
                     stimety = True
 
                 if time.time() - stime > 6:
                     if stimety == False:
-                        xy[5] = False
+                        xy[4] = False
                         break
                     stimety = False
                     stime = time.time()
@@ -479,8 +494,7 @@ def stkey():
                     key(176)
                     key(rightk, 200, 300)
                     key(176, 4000, 4100)
-
-
+            xy[2] = False
 
 def asdfasdf():
     lieimg = cv.imread('1580544331.93303.jpg')
@@ -492,8 +506,6 @@ def asdfasdf():
 
 
 
-
-beep.start()
 scmct = Thread(target=scmc, daemon=True)
 useait = Thread(target=useai, daemon=True)
 scmct.start()
