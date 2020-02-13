@@ -26,7 +26,7 @@ if hwnd == 0:
     sys.exit()
 
 altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, True]  # 캐릭터위치, 룬 위치, 룬, 심, 보스
+xy = [[], [], False, False, True]  # 캐릭터위치, 룬 위치, 룬, 심, 채널
 cren = []
 lock = Lock()
 
@@ -103,7 +103,7 @@ def detect(cfg,
            names,
            weights,
            images,
-           img_size=608,
+           img_size=416,
            conf_thres=0.5,
            iou_thres=0.5,
            zoom=1):
@@ -217,10 +217,9 @@ def scmc():
                 stime = time.time()
                 stimety = False
             elif time.time() - stime > 5 and not beep.is_alive():
+                print('사람')
                 beep = Thread(target=winsound.Beep, args=(300, 3000,))
                 beep.start()
-            else:
-                print(time.time() - stime)
         else:
             stimety = True
 
@@ -282,7 +281,7 @@ def useai():
 def stkey():
     global xy, beep, cren
     swcont = 0
-
+    fstart = False
     def caden():
         nonlocal swcont
 
@@ -477,23 +476,32 @@ def stkey():
         except findBoss:
             xy[2] = True
             key.change(False)
+            if fstart:
+                key(esc)
+                key(176)
+                key(rightk, 200, 300)
+                key(176, 100, 150)
+                key(176, 5000, 5100)
             stimety = False
             stime = time.time()
             while True:
                 player = match("y", cren, 87, 171, 12, 214, False)
                 if player[0] > 0.65:
+                    print('발견')
                     stimety = True
 
                 if time.time() - stime > 6:
                     if stimety == False:
                         xy[4] = False
+                        fstart = True
                         break
                     stimety = False
                     stime = time.time()
                     key(esc)
                     key(176)
                     key(rightk, 200, 300)
-                    key(176, 4000, 4100)
+                    key(176, 100, 150)
+                    key(176, 2500, 2600)
             xy[2] = False
 
 def asdfasdf():
@@ -505,7 +513,7 @@ def asdfasdf():
     cv.waitKey(0)
 
 
-
+beep.start()
 scmct = Thread(target=scmc, daemon=True)
 useait = Thread(target=useai, daemon=True)
 scmct.start()
