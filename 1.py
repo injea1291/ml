@@ -53,9 +53,59 @@ def detect(cfg,
 
     return xyli
 
-lieimg = cv.imread('data\\samples\\384.png')
-lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
+hwnd = win32gui.FindWindow(None, 'MapleStory')
+hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+if hwnd == 0:
+    print("프로그램 찾지못함")
+    sys.exit()
 
-print(lieli)
+def creen():
+    left, top, right, bot = win32gui.GetWindowRect(hwnd)
+    w = right - left
+    h = bot - top
+
+    hdc = win32gui.GetWindowDC(hwnd)
+
+    uihdc = win32ui.CreateDCFromHandle(hdc)
+
+    cDC = uihdc.CreateCompatibleDC()
+    cbmp = win32ui.CreateBitmap()
+    cbmp.CreateCompatibleBitmap(uihdc, w, h)
+
+    cDC.SelectObject(cbmp)
+    cDC.BitBlt((0, 0), (w, h), uihdc, (0, 0), win32con.SRCCOPY)
+    signedIntsArray = cbmp.GetBitmapBits(True)
+    img = np.frombuffer(signedIntsArray, dtype='uint8')
+    img.shape = (h, w, 4)
+    img = cv.cvtColor(img, cv.COLOR_BGRA2BGR)
+    win32gui.DeleteObject(cbmp.GetHandle())
+    cDC.DeleteDC()
+    uihdc.DeleteDC()
+    win32gui.ReleaseDC(hwnd, hdc)
+    return img
 
 
+def match(a, img, b, c, d, e, f=True):
+    img = img.copy()
+    cutim = img[b:c, d:e]
+    cutimgy = cv.cvtColor(cutim, cv.COLOR_BGR2GRAY)
+    find = cv.imread(f'dataimg\\{a}.jpg', cv.IMREAD_GRAYSCALE)
+    ms = cv.imread(f'dataimg\\{a}m.jpg', cv.IMREAD_GRAYSCALE)
+    w, h = find.shape[::-1]
+    if f:
+        res = cv.matchTemplate(cutimgy, find, cv.TM_CCORR_NORMED, mask=ms)
+    else:
+        res = cv.matchTemplate(cutimgy, find, cv.TM_CCOEFF_NORMED)
+
+    minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
+    cv.rectangle(cutim, maxloc, (maxloc[0] + w, maxloc[1] + h), (255, 0, 0), 2)
+
+    mxy = maxval, [maxloc[0] + w / 2, maxloc[1] + h / 2], list(maxloc), cutim
+    mxy = list(mxy)
+
+    return mxy
+
+mxysb = match("sb", creen(), 712, 750, 1100, 1400, False)
+cv.imshow('asd', mxysb[3])
+print(mxysb[0:3])
+cv.waitKey(0)

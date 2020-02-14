@@ -276,6 +276,7 @@ def useai():
                     beep = Thread(target=winsound.Beep, args=(300, 3000,))
                     beep.start()
             stime = time.time()
+            print('end gpu')
 
 
 def stkey():
@@ -370,7 +371,7 @@ def stkey():
         wcont = 0
         while True:
             if xy[3]:
-                key(198, 1000, 1100)
+                key(194, 1000, 1100)
                 key(213, 700, 800)
                 xy[3] = False
             elif xy[0][0] - 33 >= 29:
