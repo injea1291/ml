@@ -105,7 +105,15 @@ def match(a, img, b, c, d, e, f=True):
 
     return mxy
 
-mxysb = match("sb", creen(), 712, 750, 1100, 1400, False)
-cv.imshow('asd', mxysb[3])
-print(mxysb[0:3])
-cv.waitKey(0)
+hwnd = win32gui.FindWindow(None, 'MapleStory')
+hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+if hwnd == 0:
+    print("프로그램 찾지못함")
+    sys.exit()
+
+while True:
+    player = match("y", creen(), 87, 171, 12, 214,False)
+    print(player[0:3])
+    if player[0] > 0.65:
+        cv.imshow('asd',player[3])
+        cv.waitKey(1)

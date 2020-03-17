@@ -26,7 +26,7 @@ if hwnd == 0:
     sys.exit()
 
 altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, True]  # 캐릭터위치, 룬 위치, 룬, 심, 채널
+xy = [[], [], False, False, True]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
 cren = []
 lock = Lock()
 
@@ -51,10 +51,10 @@ class Keyboard():
 
     def SendPacket(self, status, KeyValue, ss, se, es=40, ee=70):
         if self.raseof:
-            if xy[2]:
-                raise findRhun
             if xy[4]:
                 raise findBoss
+            elif xy[2]:
+                raise findRhun
         if self.status == 2 and self.wait == True:
             self.ra()
             self.wait = False
@@ -281,10 +281,10 @@ def useai():
 
 def stkey():
     global xy, beep, cren
-    swcont = 0
     fstart = False
+
     def caden():
-        nonlocal swcont
+        swcont = 0
 
         def atkctrl():
             nonlocal swcont, wcont
@@ -475,6 +475,7 @@ def stkey():
                         key(eval(i[0][:-5] + 'k'))
             xy[2] = False
         except findBoss:
+
             xy[2] = True
             key.change(False)
             if fstart:
@@ -483,27 +484,35 @@ def stkey():
                 key(rightk, 200, 300)
                 key(176, 100, 150)
                 key(176, 5000, 5100)
-            stimety = False
-            stime = time.time()
-            while True:
-                player = match("y", cren, 87, 171, 12, 214, False)
-                if player[0] > 0.65:
-                    print('발견')
-                    stimety = True
+            findplayer = True
 
-                if time.time() - stime > 6:
-                    if stimety == False:
-                        xy[4] = False
-                        fstart = True
-                        break
-                    stimety = False
+            while True:
+                cheak = match('ye', cren, 742, 790, 790, 840, False)
+                if cheak[0] > 0.99:
+                    print("선물")
                     stime = time.time()
-                    key(esc)
-                    key(176)
-                    key(rightk, 200, 300)
-                    key(176, 100, 150)
-                    key(176, 2500, 2600)
+                    while time.time() - stime < 4:
+                        player = match("y", cren, 87, 171, 12, 214, False)
+                        if player[0] > 0.64:
+                            print("찾음")
+                            key(esc)
+                            key(176)
+                            key(rightk, 200, 300)
+                            key(176, 100, 150)
+                            key(176, 2000, 2100)
+                            findplayer = True
+                            print("찾기시작")
+                            break
+                        else:
+                            findplayer = False
+
+                    if findplayer == False:
+                        break
+
             xy[2] = False
+            xy[4] = False
+            fstart = True
+
 
 def asdfasdf():
     lieimg = cv.imread('1580544331.93303.jpg')
