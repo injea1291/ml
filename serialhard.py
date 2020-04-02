@@ -1,6 +1,5 @@
 import sys
 import serial
-import time
 from time import sleep
 import cv2.cv2 as cv
 import win32con
@@ -39,7 +38,7 @@ class findBoss(Exception):
     pass
 
 
-class Keyboard():
+class Keyboard:
     def __init__(self):
         self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
 
@@ -55,7 +54,7 @@ class Keyboard():
                 raise findBoss
             elif xy[2]:
                 raise findRhun
-        if self.status == 2 and self.wait == True:
+        if self.status == 2 and self.wait:
             self.ra()
             self.wait = False
         if type(KeyValue) == str:
@@ -113,13 +112,12 @@ def detect(cfg,
     attempt_download(weights)
     model.load_state_dict(torch.load(weights, map_location=device)['model'])
     model.to(device).eval()
-
     img = letterbox(images, new_shape=img_size)[0]
 
     # Convert
-    img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
-    img = np.ascontiguousarray(img, dtype=np.float32)  # uint8 to fp16/fp32
-    img /= 255.0  # 0 - 255 to 0.0 - 1.0
+    img = img[:, :, ::-1].transpose(2, 0, 1)
+    img = np.ascontiguousarray(img, dtype=np.float32)
+    img /= 255.0
 
     classes = load_classes(names)
     img = torch.from_numpy(img).to(device)
@@ -127,7 +125,7 @@ def detect(cfg,
         img = img.unsqueeze(0)
     pred = model(img)[0]
     pred = non_max_suppression(pred, conf_thres, iou_thres, classes=None, agnostic=False)
-    for i, det in enumerate(pred):  # detections per image
+    for i, det in enumerate(pred):  # detections image
         if det is not None and len(det):
             det[:, :4] = scale_coords(img.shape[2:], det[:, :4], images.shape).round()
 
@@ -213,7 +211,7 @@ def scmc():
             cv.imshow('asd', mxyr[3])
             cv.moveWindow('asd', 10, 200)
         if mxyy[0] > 0.65 or mxyg[0] > 0.8:
-            if stimety == True:
+            if stimety:
                 stime = time.time()
                 stimety = False
             elif time.time() - stime > 5 and not beep.is_alive():
@@ -234,26 +232,26 @@ def scmc():
         cv.waitKey(1)
 
 
-def goto():
+def goto(x, y):
     while True:
-        if xy[0][0] - xy[1][0] >= 40:
+        if xy[0][0] - x >= 40:
             key.p(leftk)
             key(altk)
             key(altk)
             key.ra()
-        elif xy[1][0] - xy[0][0] >= 40:
+        elif x - xy[0][0] >= 40:
             key.p(rightk)
             key(altk)
             key(altk)
             key.ra()
-        elif xy[0][0] - xy[1][0] >= 3:
+        elif xy[0][0] - x >= 3:
             key.p(leftk, wait=True)
-        elif xy[1][0] - xy[0][0] >= 3:
+        elif x - xy[0][0] >= 3:
             key.p(rightk, wait=True)
-        elif xy[0][1] > xy[1][1] + 7:
+        elif xy[0][1] > y + 7:
             key(altk, 100, 130)
             key(96, 3000, 3100)
-        elif xy[0][1] < xy[1][1] - 7:
+        elif xy[0][1] < y - 7:
             key.p(downk)
             key(altk)
             key.ra(1000, 1100)
@@ -282,9 +280,11 @@ def useai():
 def stkey():
     global xy, beep, cren
     fstart = False
+    swcont = 0
 
     def caden():
-        swcont = 0
+        nonlocal swcont
+        swcont += 1
 
         def atkctrl():
             nonlocal swcont, wcont
@@ -321,7 +321,6 @@ def stkey():
                     key(altk)
                     key(ctrlk, 560, 630)
 
-        swcont += 1
         key.ra(200, 400)
         key(96, 900, 930)
         key('d', 40, 60)
@@ -374,9 +373,9 @@ def stkey():
                 key(194, 1000, 1100)
                 key(213, 700, 800)
                 xy[3] = False
-            elif xy[0][0] - 33 >= 29:
+            elif xy[0][0] >= 29 + 33:
                 atkctrl()
-            elif xy[0][0] - 33 >= 10:
+            elif xy[0][0] >= 10 + 33:
                 key.p(leftk, 5, 5)
             else:
                 if wcont >= 1:
@@ -457,7 +456,7 @@ def stkey():
             key.change(False)
             time.sleep(1)
             key.ra()
-            goto()
+            goto(xy[1][0], xy[1][1])
             key(32, 500, 550)
             img = cren.copy()
             mxy = match("find", img, 100, 210, 395, 508, False)
@@ -473,6 +472,8 @@ def stkey():
                     for i in labelli:
                         sleep(0.5)
                         key(eval(i[0][:-5] + 'k'))
+
+            goto(33, 69)
             xy[2] = False
         except findBoss:
 
@@ -489,38 +490,29 @@ def stkey():
             while True:
                 cheak = match('ye', cren, 742, 790, 790, 840, False)
                 if cheak[0] > 0.99:
-                    print("선물")
                     stime = time.time()
                     while time.time() - stime < 4:
                         player = match("y", cren, 87, 171, 12, 214, False)
                         if player[0] > 0.64:
-                            print("찾음")
                             key(esc)
                             key(176)
                             key(rightk, 200, 300)
                             key(176, 100, 150)
                             key(176, 2000, 2100)
                             findplayer = True
-                            print("찾기시작")
                             break
                         else:
                             findplayer = False
 
-                    if findplayer == False:
+                    if not findplayer:
                         break
-
+            goto(33, 69)
             xy[2] = False
             xy[4] = False
             fstart = True
 
 
-def asdfasdf():
-    lieimg = cv.imread('1580544331.93303.jpg')
-    lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\best.pt', lieimg)
-    print(lieli)
-    cv.rectangle(lieimg, (lieli[0][1], lieli[0][2]), (lieli[0][3], lieli[0][4]), (0, 0, 0))
-    cv.imshow('asd', lieimg)
-    cv.waitKey(0)
+
 
 
 beep.start()

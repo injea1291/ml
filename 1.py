@@ -112,8 +112,6 @@ if hwnd == 0:
     sys.exit()
 
 while True:
-    player = match("y", creen(), 87, 171, 12, 214,False)
-    print(player[0:3])
-    if player[0] > 0.65:
-        cv.imshow('asd',player[3])
-        cv.waitKey(1)
+    cren = creen()
+    mxyi = match("i", cren, 87, 171, 12, 214)
+    print(mxyi[0:3])
