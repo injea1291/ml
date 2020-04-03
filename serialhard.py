@@ -85,6 +85,7 @@ class Keyboard:
 
     def ra(self, es=40, ee=70):
         e = random.randint(es, ee)
+        self.status = 4
         packet = f'({4},{self.KeyValue},{e - 5},{e})'
         ser.write(packet.encode())
         print(f'KeyBoard.ReleaseAll')
@@ -472,8 +473,11 @@ def stkey():
                     for i in labelli:
                         sleep(0.5)
                         key(eval(i[0][:-5] + 'k'))
+                    goto(33, 69)
+            else:
+                goto(33, 69)
 
-            goto(33, 69)
+
             xy[2] = False
         except findBoss:
 
