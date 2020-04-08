@@ -10,7 +10,6 @@ import winsound
 from models import *
 from utils.datasets import *
 from utils.utils import *
-aaa
 import random
 
 ser = serial.Serial(
