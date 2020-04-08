@@ -10,6 +10,7 @@ import winsound
 from models import *
 from utils.datasets import *
 from utils.utils import *
+aaa
 import random
 
 ser = serial.Serial(
@@ -37,7 +38,7 @@ class findBoss(Exception):
     pass
 
 
-class Keyboardsdfsdfds:
+class Keyboard:
     def __init__(self):
         self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
 
