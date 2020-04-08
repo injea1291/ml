@@ -25,7 +25,7 @@ if hwnd == 0:
     sys.exit()
 
 altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, True]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
+xy = [[], [], False, False, True, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
 cren = []
 lock = Lock()
 
@@ -188,7 +188,7 @@ def match(a, img, b, c, d, e, f=True):
 
 def scmc():
     global xy, beep, cren
-    stimety, stime = True, 0
+    stimety, stime, xytf = [True, True], [0, 0], [0, 0]
     while True:
         cren = creen()
         mxyi = match("i", cren, 87, 171, 12, 214)
@@ -200,6 +200,16 @@ def scmc():
         mxybs = match("b", cren, 65, 85, 580, 650, False)
         if mxyi[0] > 0.99:
             xy[0] = mxyi[1][0:2]
+            if xy[0] == xytf:
+                if stimety[1]:
+                    stime[1] = time.time()
+                    stimety[1] = False
+                elif time.time() - stime[1] > 10:
+                    xy[5] = True
+            else:
+                stimety[1] = True
+            xytf = xy[0]
+
         if mxysb[0] > 0.9:
             lock.acquire()
             xy[3] = True
@@ -212,15 +222,15 @@ def scmc():
             cv.imshow('asd', mxyr[3])
             cv.moveWindow('asd', 10, 200)
         if mxyy[0] > 0.65 or mxyg[0] > 0.8:
-            if stimety:
-                stime = time.time()
-                stimety = False
-            elif time.time() - stime > 5 and not beep.is_alive():
+            if stimety[0]:
+                stime[0] = time.time()
+                stimety[0] = False
+            elif time.time() - stime[0] > 5 and not beep.is_alive():
                 print('사람')
                 beep = Thread(target=winsound.Beep, args=(300, 3000,))
                 beep.start()
         else:
-            stimety = True
+            stimety[0] = True
 
         if mxylie[0] > 0.99 and not math.isinf(mxylie[0]) and not beep.is_alive():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))

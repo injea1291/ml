@@ -4,7 +4,7 @@ from time import sleep
 class rect:
     def __init__(self, sx, sy, ex, ey):
         self.color = (0, 0, 0)
-        self.label = 'lie'
+        self.label = labelimg
         self.sx, self.sy = sx, sy
         self.ex, self.ey = ex, ey
         if self.sx > self.ex and self.sy > self.ey:
@@ -205,7 +205,9 @@ while (1):
                 i.label = "right"
             elif k == 2490368:  # up arrow
                 i.label = "up"
+            elif k == 116:  # up arrow
+                i.label = "star"
             else:
-                i.label = 'lie'
+                i.label = labelimg
 
 cv.destroyAllWindows()

@@ -2,26 +2,25 @@ import glob
 import cv2.cv2 as cv
 import os
 
-
 arrows = ["right", "left", "up", "down"]
+lies = ["star", "lie"]
 
 def yolotomy(lis, ih, iw, zoom):
-    xmin = max(float(lis[1]) - float(lis[3]) / 2, 0)
-    xmax = min(float(lis[1]) + float(lis[3]) / 2, 1)
-    ymin = max(float(lis[2]) - float(lis[4]) / 2, 0)
-    ymax = min(float(lis[2]) + float(lis[4]) / 2, 1)
+    xmin = max(float(lis[0]) - float(lis[2]) / 2, 0)
+    xmax = min(float(lis[0]) + float(lis[2]) / 2, 1)
+    ymin = max(float(lis[1]) - float(lis[3]) / 2, 0)
+    ymax = min(float(lis[1]) + float(lis[3]) / 2, 1)
 
     xmin = int(iw * xmin)
     xmax = int(iw * xmax)
     ymin = int(ih * ymin)
     ymax = int(ih * ymax)
-    lis[1:] = xmin, ymin, xmax, ymax
-    lis[1:] = list(map(lambda a: int(a * zoom), lis[1:]))
+    lis = xmin, ymin, xmax, ymax
+    lis = list(map(lambda a: int(a * zoom), lis))
     return lis
 
 
 def mytoyolo(lis, ih, iw):
-
     xcen = float((lis[0] + lis[2])) / 2 / iw
     ycen = float((lis[1] + lis[3])) / 2 / ih
 
@@ -33,44 +32,50 @@ def mytoyolo(lis, ih, iw):
     return lis
 
 
-def globli(a, tj):
-    di, d = [], glob.glob(f"{a}\\*.{tj}")
+def globli(a, a1, tj):
+    di, d = [], glob.glob(f"{a}\\{a1}\\*.{tj}")
     for i in d:
-        i = i[len(a) + 1:]
+        i = i[len(a) + 2 + len(a1):]
         i = i[:-4]
         di.append(int(i))
     di.sort()
     return di
 
+
 def renamefile(a, tj, count):
     b = glob.glob(f"images\\{a}\\*.{tj}")
     for c, i in enumerate(b):
         c = c + count
-        print(c, i)
         os.rename(i, f'images\\{a}\\{c}.jpg')
         print(c, i)
 
-# renamefile('output','jpg',372)
 
-def renamefile1(a,a1,b,b1,c,c1):
-    dri = globli(f"{a}\\{a1}", f'{c}')
-    for i in dri:
-        os.rename(f'{a}\\{a1}\\{str(i)}.{c}', f'{b}\\{b1}\\{str(i)}.{c1}')
-        print(i)
+# renamefile('output', 'txt', 40000)
 
 
-# renamefile1('images', 'arrow', 'images', 'result', 'jpg', 'png')
+def renamefile1(a, a1, a2, count):
+    dri = globli(a, a1, a2)
+    for c, i in enumerate(dri):
+        c = c + count
+        print(i, c)
+        os.rename(f'{a}\\{a1}\\{str(i)}.{a2}', f'{a}\\{a1}\\{c}.{a2}')
+
+
+# renamefile1('images', 'lie', 'jpg', 1)
+
 
 def a2(name):
-    dri = globli(f"images\\{name}", "jpg")
+    dri = globli("images", name, "jpg")
     f = open(f"data\\{name}.txt", 'w')
     for i in dri:
         f.write(f"images/result/{i}.jpg\n")
     f.close()
-# a2('arrow')
+
+
+a2('lie')
 
 def label(labelimg, zoom, labellist):
-    dri = globli(f'labels\\{labelimg}', "txt")
+    dri = globli('labels', labelimg, "txt")
     for i in dri:
         f = open(f"labels\\{labelimg}\\{str(i)}.txt", 'r')
         f1 = open(f"labels\\result\\{str(i)}.txt", 'w')
@@ -87,7 +92,29 @@ def label(labelimg, zoom, labellist):
             f1.write(data)
         f.close()
         f1.close()
-label('lie', 1, ["lie"])
+
+
+# label('lie', 1, lies)
+
+def label1(labelimg, zoom, labellist):
+    dri = globli("labels", labelimg, "txt")
+    for i in dri:
+        f = open(f"labels\\{labelimg}\\{str(i)}.txt", 'r')
+        f1 = open(f"labels\\result\\{str(i)}.txt", 'w')
+        img = cv.imread(f"images\\{labelimg}\\{str(i)}.jpg")
+        ih, iw = img.shape[:2]
+        lines = f.readlines()
+        for line in lines:
+            linel = line.split()
+            linel[1:] = list(map(float, linel[1:]))
+            linel[1:] = yolotomy(linel[1:], ih, iw, zoom)
+            linel[0] = labellist[int(linel[0])]
+            data = f"{linel[0]} {linel[1]} {linel[2]} {linel[3]} {linel[4]}\n"
+            f1.write(data)
+        f.close()
+        f1.close()
+
+# label1('output', 1, lies)
 
 def makex4(dir, dir1):
     dri = globli(dir, "jpg")
