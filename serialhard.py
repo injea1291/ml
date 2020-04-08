@@ -186,7 +186,10 @@ def match(a, img, b, c, d, e, f=True):
     return mxy
 
 
-def scmc():
+def scmc62323():
+
+
+
     global xy, beep, cren
     stimety, stime, xytf = [True, True], [0, 0], [0, 0]
     while True:
@@ -200,15 +203,6 @@ def scmc():
         mxybs = match("b", cren, 65, 85, 580, 650, False)
         if mxyi[0] > 0.99:
             xy[0] = mxyi[1][0:2]
-            if xy[0] == xytf:
-                if stimety[1]:
-                    stime[1] = time.time()
-                    stimety[1] = False
-                elif time.time() - stime[1] > 10:
-                    xy[5] = True
-            else:
-                stimety[1] = True
-            xytf = xy[0]
 
         if mxysb[0] > 0.9:
             lock.acquire()
