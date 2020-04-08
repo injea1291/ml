@@ -42,7 +42,7 @@ def exif_size(img):
 
 
 class LoadImages:  # for inference
-    def __init__(self, path, img_size=416, half=False):
+    def __init__(self, path, img_size=416):
         path = str(Path(path))  # os-agnostic
         files = []
         if os.path.isdir(path):
@@ -59,7 +59,6 @@ class LoadImages:  # for inference
         self.nF = nI + nV  # number of files
         self.video_flag = [False] * nI + [True] * nV
         self.mode = 'images'
-        self.half = half  # half precision fp16 images
         if any(videos):
             self.new_video(videos[0])  # new video
         else:
@@ -104,8 +103,7 @@ class LoadImages:  # for inference
 
         # Convert
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
-        img = np.ascontiguousarray(img, dtype=np.float16 if self.half else np.float32)  # uint8 to fp16/fp32
-        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        img = np.ascontiguousarray(img)
 
         # cv2.imwrite(path + '.letterbox.jpg', 255 * img.transpose((1, 2, 0))[:, :, ::-1])  # save letterbox image
         return path, img, img0, self.cap
@@ -120,9 +118,8 @@ class LoadImages:  # for inference
 
 
 class LoadWebcam:  # for inference
-    def __init__(self, pipe=0, img_size=416, half=False):
+    def __init__(self, pipe=0, img_size=416):
         self.img_size = img_size
-        self.half = half  # half precision fp16 images
 
         if pipe == '0':
             pipe = 0  # local camera
@@ -177,8 +174,7 @@ class LoadWebcam:  # for inference
 
         # Convert
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
-        img = np.ascontiguousarray(img, dtype=np.float16 if self.half else np.float32)  # uint8 to fp16/fp32
-        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        img = np.ascontiguousarray(img)
 
         return img_path, img, img0, None
 
@@ -187,10 +183,9 @@ class LoadWebcam:  # for inference
 
 
 class LoadStreams:  # multiple IP or RTSP cameras
-    def __init__(self, sources='streams.txt', img_size=416, half=False):
+    def __init__(self, sources='streams.txt', img_size=416):
         self.mode = 'images'
         self.img_size = img_size
-        self.half = half  # half precision fp16 images
 
         if os.path.isfile(sources):
             with open(sources, 'r') as f:
@@ -251,9 +246,8 @@ class LoadStreams:  # multiple IP or RTSP cameras
         img = np.stack(img, 0)
 
         # Convert
-        img = img[:, :, :, ::-1].transpose(0, 3, 1, 2)  # BGR to RGB, to 3x416x416, uint8 to float32
-        img = np.ascontiguousarray(img, dtype=np.float16 if self.half else np.float32)
-        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        img = img[:, :, :, ::-1].transpose(0, 3, 1, 2)  # BGR to RGB, to bsx3x416x416
+        img = np.ascontiguousarray(img)
 
         return self.sources, img, img0, None
 
@@ -263,7 +257,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
     def __init__(self, path, img_size=416, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
-                 cache_labels=False, cache_images=False, single_cls=False):
+                 cache_labels=True, cache_images=False, single_cls=False):
         path = str(Path(path))  # os-agnostic
         assert os.path.isfile(path), 'File not found %s. See %s' % (path, help_url)
         with open(path, 'r') as f:
@@ -282,6 +276,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.hyp = hyp
         self.image_weights = image_weights
         self.rect = False if image_weights else rect
+        self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
 
         # Define labels
         self.label_files = [x.replace('images', 'labels').replace(os.path.splitext(x)[-1], '.txt')
@@ -318,7 +313,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 elif mini > 1:
                     shapes[i] = [1, 1 / mini]
 
-            self.batch_shapes = np.ceil(np.array(shapes) * img_size / 32.).astype(np.int) * 32
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / 64.).astype(np.int) * 64
 
         # Preload labels (required for weighted CE training)
         self.imgs = [None] * n
@@ -370,7 +365,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                             if not os.path.exists(Path(f).parent):
                                 os.makedirs(Path(f).parent)  # make new output folder
 
-                            b = x[1:] * np.array([w, h, w, h])  # box
+                            b = x[1:] * [w, h, w, h]  # box
                             b[2:] = b[2:].max()  # rectangle to square
                             b[2:] = b[2:] * 1.3 + 30  # pad
                             b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int)
@@ -419,12 +414,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         if self.image_weights:
             index = self.indices[index]
 
-        img_path = self.img_files[index]
-        label_path = self.label_files[index]
-
         hyp = self.hyp
-        mosaic = True and self.augment  # load 4 images at a time into a mosaic (only during training)
-        if mosaic:
+        if self.mosaic:
             # Load mosaic
             img, labels = load_mosaic(self, index)
             shapes = None
@@ -440,23 +431,18 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
             # Load labels
             labels = []
-            if os.path.isfile(label_path):
-                x = self.labels[index]
-                if x is None:  # labels not preloaded
-                    with open(label_path, 'r') as f:
-                        x = np.array([x.split() for x in f.read().splitlines()], dtype=np.float32)
-
-                if x.size > 0:
-                    # Normalized xywh to pixel xyxy format
-                    labels = x.copy()
-                    labels[:, 1] = ratio[0] * w * (x[:, 1] - x[:, 3] / 2) + pad[0]  # pad width
-                    labels[:, 2] = ratio[1] * h * (x[:, 2] - x[:, 4] / 2) + pad[1]  # pad height
-                    labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
-                    labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
+            x = self.labels[index]
+            if x is not None and x.size > 0:
+                # Normalized xywh to pixel xyxy format
+                labels = x.copy()
+                labels[:, 1] = ratio[0] * w * (x[:, 1] - x[:, 3] / 2) + pad[0]  # pad width
+                labels[:, 2] = ratio[1] * h * (x[:, 2] - x[:, 4] / 2) + pad[1]  # pad height
+                labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
+                labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
 
         if self.augment:
             # Augment imagespace
-            if not mosaic:
+            if not self.mosaic:
                 img, labels = random_affine(img, labels,
                                             degrees=hyp['degrees'],
                                             translate=hyp['translate'],
@@ -481,7 +467,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
         if self.augment:
             # random left-right flip
-            lr_flip = False
+            lr_flip = True
             if lr_flip and random.random() < 0.5:
                 img = np.fliplr(img)
                 if nL:
@@ -502,7 +488,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
         img = np.ascontiguousarray(img)
 
-        return torch.from_numpy(img), labels_out, img_path, shapes
+        return torch.from_numpy(img), labels_out, self.img_files[index], shapes
 
     @staticmethod
     def collate_fn(batch):
@@ -530,8 +516,9 @@ def load_image(self, index):
 
 
 def augment_hsv(img, hgain=0.5, sgain=0.5, vgain=0.5):
-    x = (np.random.uniform(-1, 1, 3) * np.array([hgain, sgain, vgain]) + 1).astype(np.float32)  # random gains
-    img_hsv = (cv2.cvtColor(img, cv2.COLOR_BGR2HSV) * x.reshape((1, 1, 3))).clip(None, 255).astype(np.uint8)
+    x = np.random.uniform(-1, 1, 3) * [hgain, sgain, vgain] + 1  # random gains
+    img_hsv = (cv2.cvtColor(img, cv2.COLOR_BGR2HSV) * x).clip(None, 255).astype(np.uint8)
+    np.clip(img_hsv[:, :, 0], None, 179, out=img_hsv[:, :, 0])  # inplace hue clip (0 - 179 deg)
     cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR, dst=img)  # no return needed
 
 
@@ -541,7 +528,7 @@ def load_mosaic(self, index):
     labels4 = []
     s = self.img_size
     xc, yc = [int(random.uniform(s * 0.5, s * 1.5)) for _ in range(2)]  # mosaic center x, y
-    img4 = np.zeros((s * 2, s * 2, 3), dtype=np.uint8) + 128  # base image with 4 tiles
+    img4 = np.full((s * 2, s * 2, 3), 114, dtype=np.uint8)  # base image with 4 tiles
     indices = [index] + [random.randint(0, len(self.labels) - 1) for _ in range(3)]  # 3 additional image indices
     for i, index in enumerate(indices):
         # Load image
@@ -602,7 +589,7 @@ def load_mosaic(self, index):
     return img4, labels4
 
 
-def letterbox(img, new_shape=(416, 416), color=(128, 128, 128),
+def letterbox(img, new_shape=(416, 416), color=(114, 114, 114),
               auto=True, scaleFill=False, scaleup=True, interp=cv2.INTER_AREA):
     # Resize image to a 32-pixel-multiple rectangle https://github.com/ultralytics/yolov3/issues/232
     shape = img.shape[:2]  # current shape [height, width]
@@ -619,7 +606,7 @@ def letterbox(img, new_shape=(416, 416), color=(128, 128, 128),
     new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
     dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
     if auto:  # minimum rectangle
-        dw, dh = np.mod(dw, 32), np.mod(dh, 32)  # wh padding
+        dw, dh = np.mod(dw, 64), np.mod(dh, 64)  # wh padding
     elif scaleFill:  # stretch
         dw, dh = 0.0, 0.0
         new_unpad = new_shape
@@ -666,7 +653,7 @@ def random_affine(img, targets=(), degrees=10, translate=.1, scale=.1, shear=10,
     M = S @ T @ R  # ORDER IS IMPORTANT HERE!!
     changed = (border != 0) or (M != np.eye(3)).any()
     if changed:
-        img = cv2.warpAffine(img, M[:2], dsize=(width, height), flags=cv2.INTER_AREA, borderValue=(128, 128, 128))
+        img = cv2.warpAffine(img, M[:2], dsize=(width, height), flags=cv2.INTER_AREA, borderValue=(114, 114, 114))
 
     # Transform label coordinates
     n = len(targets)
@@ -731,7 +718,7 @@ def cutout(image, labels):
         return inter_area / box2_area
 
     # create random masks
-    scales = [0.5] * 1  # + [0.25] * 4 + [0.125] * 16 + [0.0625] * 64 + [0.03125] * 256  # image size fraction
+    scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16  # image size fraction
     for s in scales:
         mask_h = random.randint(1, int(h * s))
         mask_w = random.randint(1, int(w * s))
@@ -743,14 +730,13 @@ def cutout(image, labels):
         ymax = min(h, ymin + mask_h)
 
         # apply random color mask
-        mask_color = [random.randint(0, 255) for _ in range(3)]
-        image[ymin:ymax, xmin:xmax] = mask_color
+        image[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)]
 
         # return unobscured labels
         if len(labels) and s > 0.03:
             box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
             ioa = bbox_ioa(box, labels[:, 1:5])  # intersection over area
-            labels = labels[ioa < 0.90]  # remove >90% obscured labels
+            labels = labels[ioa < 0.60]  # remove >60% obscured labels
 
     return labels
 
