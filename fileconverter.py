@@ -50,7 +50,7 @@ def renamefile(a, tj, count):
         print(c, i)
 
 
-# renamefile('output', 'txt', 40000)
+# renamefile('output', 'jpg', 751)
 
 
 def renamefile1(a, a1, a2, count):

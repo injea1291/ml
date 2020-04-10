@@ -280,7 +280,7 @@ def useai():
         time.sleep(1)
         if time.time() - stime > 5 and not xy[2]:
             lieimg = cren.copy()
-            lieli = detect('cfg\\yolov3-spp-2cls.cfg', 'data\\lie.names', 'weights\\lie1.pt', lieimg)
+            lieli = detect('cfg\\yolov3-spp-2cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
             if lieli:
                 print(lieli)
                 cv.imwrite(f'{time.time()}.jpg', lieimg)
