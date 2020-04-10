@@ -72,7 +72,7 @@ def a2(name):
     f.close()
 
 
-a2('lie')
+a2('arrow')
 
 def label(labelimg, zoom, labellist):
     dri = globli('labels', labelimg, "txt")
@@ -94,7 +94,7 @@ def label(labelimg, zoom, labellist):
         f1.close()
 
 
-# label('lie', 1, lies)
+label('arrow', 4, arrows)
 
 def label1(labelimg, zoom, labellist):
     dri = globli("labels", labelimg, "txt")

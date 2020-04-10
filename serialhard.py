@@ -1,4 +1,3 @@
-import sys
 import serial
 from time import sleep
 import cv2.cv2 as cv
@@ -18,10 +17,9 @@ ser = serial.Serial(
 )
 
 hwnd = win32gui.FindWindow(None, 'MapleStory')
-hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-if hwnd == 0:
-    print("프로그램 찾지못함")
-    sys.exit()
+left, top, right, bot = win32gui.GetWindowRect(hwnd)
+if right - left < 900:
+    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
 
 altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
 xy = [[], [], False, False, True, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
@@ -103,8 +101,8 @@ def detect(cfg,
            weights,
            images,
            img_size=416,
-           conf_thres=0.5,
-           iou_thres=0.5,
+           conf_thres=0.3,
+           iou_thres=0.6,
            zoom=1):
     xyli = []
     device = torch_utils.select_device()
@@ -112,19 +110,25 @@ def detect(cfg,
     attempt_download(weights)
     model.load_state_dict(torch.load(weights, map_location=device)['model'])
     model.to(device).eval()
-    img = letterbox(images, new_shape=img_size)[0]
 
+    # dataset = LoadImages(source, img_size=img_size)
+    img = letterbox(images, new_shape=img_size)[0]
     # Convert
     img = img[:, :, ::-1].transpose(2, 0, 1)
-    img = np.ascontiguousarray(img, dtype=np.float32)
-    img /= 255.0
+    img = np.ascontiguousarray(img)
+    # ------------------------------------------------
 
     classes = load_classes(names)
     img = torch.from_numpy(img).to(device)
+    img = img.float()  # uint8 to fp16/32
+    img /= 255.0
     if img.ndimension() == 3:
         img = img.unsqueeze(0)
+
     pred = model(img)[0]
-    pred = non_max_suppression(pred, conf_thres, iou_thres, classes=None, agnostic=False)
+
+    pred = non_max_suppression(pred, conf_thres, iou_thres, multi_label=False, classes=None, agnostic=False)
+
     for i, det in enumerate(pred):  # detections image
         if det is not None and len(det):
             det[:, :4] = scale_coords(img.shape[2:], det[:, :4], images.shape).round()
@@ -276,7 +280,7 @@ def useai():
         time.sleep(1)
         if time.time() - stime > 5 and not xy[2]:
             lieimg = cren.copy()
-            lieli = detect('cfg\\yolov3-spp-1cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
+            lieli = detect('cfg\\yolov3-spp-2cls.cfg', 'data\\lie.names', 'weights\\lie1.pt', lieimg)
             if lieli:
                 print(lieli)
                 cv.imwrite(f'{time.time()}.jpg', lieimg)
@@ -486,7 +490,6 @@ def stkey():
             else:
                 goto(33, 69)
 
-
             xy[2] = False
         except findBoss:
 
@@ -502,7 +505,7 @@ def stkey():
 
             while True:
                 cheak = match('ye', cren, 742, 790, 790, 840, False)
-                if cheak[0] > 0.99:
+                if cheak[0] > 0.98:
                     stime = time.time()
                     while time.time() - stime < 4:
                         player = match("y", cren, 87, 171, 12, 214, False)
@@ -525,12 +528,13 @@ def stkey():
             fstart = True
 
 
+def main():
+    beep.start()
+    scmct = Thread(target=scmc, daemon=True)
+    useait = Thread(target=useai, daemon=True)
+    scmct.start()
+    useait.start()
+    stkey()
 
 
-
-beep.start()
-scmct = Thread(target=scmc, daemon=True)
-useait = Thread(target=useai, daemon=True)
-scmct.start()
-useait.start()
-stkey()
+main()
