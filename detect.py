@@ -162,9 +162,9 @@ def detect(save_img=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp-2cls.cfg', help='*.cfg path')
-    parser.add_argument('--names', type=str, default='data/lie.names', help='*.names path')
-    parser.add_argument('--weights', type=str, default='weights/lie.pt', help='weights path')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp-4cls.cfg', help='*.cfg path')
+    parser.add_argument('--names', type=str, default='data/arrow.names', help='*.names path')
+    parser.add_argument('--weights', type=str, default='weights/arrow.pt', help='weights path')
     parser.add_argument('--source', type=str, default='data/samples', help='source')  # input file/folder, 0 for webcam
     parser.add_argument('--output', type=str, default='output', help='output folder')  # output folder
     parser.add_argument('--img-size', type=int, default=416, help='inference size (pixels)')

@@ -12,7 +12,7 @@ from utils.utils import *
 import random
 
 ser = serial.Serial(
-    port='COM4',
+    port='COM3',
     baudrate=9600, timeout=0
 )
 
@@ -208,7 +208,9 @@ def scmc():
                     stime[1] = time.time()
                     stimety[1] = False
                 elif time.time() - stime[1] > 10:
+
                     xy[5] = True
+                    print(xy[5])
             else:
                 stimety[1] = True
             xytf = xy[0]
@@ -239,10 +241,12 @@ def scmc():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
 
-        if mxybs[0] > 0.6:
-            lock.acquire()
-            xy[4] = True
-            lock.release()
+        if mxybs[0] > 0.6 and not beep.is_alive():
+            beep = Thread(target=winsound.Beep, args=(300, 3000,))
+            beep.start()
+            # lock.acquire()
+            # xy[4] = True
+            # lock.release()
         cv.waitKey(1)
 
 
@@ -310,7 +314,7 @@ def stkey():
                     key(altk)
                     key(altk, 20, 30)
                     key.r(leftk)
-                    key('w', 560, 630)
+                    key('w', 450, 490)
 
                 else:
                     key.p(leftk, 20, 30)
@@ -318,14 +322,14 @@ def stkey():
                     key(altk, 20, 30)
                     key.r(leftk)
                     key(altk)
-                    key('w', 560, 630)
+                    key('w', 450,490)
             else:
                 if radm >= 19:
                     key.p(leftk, 20, 30)
                     key(altk)
                     key(altk, 20, 30)
                     key.r(leftk)
-                    key(ctrlk, 560, 630)
+                    key(ctrlk, 550,580)
 
                 else:
                     key.p(leftk, 20, 30)
@@ -333,26 +337,25 @@ def stkey():
                     key(altk, 20, 30)
                     key.r(leftk)
                     key(altk)
-                    key(ctrlk, 560, 630)
+                    key(ctrlk, 490, 520)
 
         key.ra(200, 400)
+        key(leftk)
         key(96, 900, 930)
         key('d', 40, 60)
-        key('d', 600, 620)
+        key('d', 520, 540)
         key.p(rightk)
         key('s', 40, 60)
-        key('s', 250, 280)
+        key('s', 270, 290)
         key.r(rightk, 30, 50)
         key('a', 40, 60)
-        key('a', 400, 500)
+        key('a', 400, 550)
 
-        key(altk)
-        key(altk)
-        key(ctrlk, 560, 630)
+        while xy[0][0] < 125:
+            key(altk)
+            key(altk)
+            key(ctrlk, 580, 600)
 
-        key(altk)
-        key(altk)
-        key(ctrlk, 560, 590)
         key(118, 101, 150)
 
         key.p(rightk, 21, 41)
@@ -375,19 +378,19 @@ def stkey():
             key(altk, 41, 70)
 
         key(altk, 41, 70)
-        key.r(downk, 530, 580)
+        key.r(downk, 520, 540)
 
         key.p(leftk, 41, 60)
-        key('a', 210, 280)
-        key('s', 550, 650)
+        key('a', 210, 240)
+        key('s', 550, 610)
         key.r(leftk, 41, 60)
         wcont = 0
         while True:
             if xy[3]:
                 key(194, 1000, 1100)
-                key(213, 700, 800)
+                key(213, 750, 800)
                 xy[3] = False
-            elif xy[0][0] >= 29 + 33:
+            elif xy[0][0] >= 31 + 33:
                 atkctrl()
             elif xy[0][0] >= 10 + 33:
                 key.p(leftk, 5, 5)
@@ -480,7 +483,7 @@ def stkey():
                 y = 400 + mxy[2][0] + 48
                 cv.imwrite(f'r{time.time()}.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
                 labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
-                                 img[x:x + 105, y:y + 5 + (4 * 93)], 608, 0.5, 0.3)
+                                 img[x:x + 105, y:y + 5 + (4 * 93)])
                 print(labelli)
                 if len(labelli) == 4:
                     for i in labelli:
