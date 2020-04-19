@@ -7,6 +7,9 @@ import time
 import random
 import sys
 import win32con
+
+
+
 arli = list(range(4))
 findt = False
 
@@ -90,30 +93,30 @@ def match(a, img, b, c, d, e, f=True):
 
     return mxy
 
+if __name__ == "__main__":
+    hwnd = win32gui.FindWindow(None, 'MapleStory')
+    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+    if hwnd == 0:
+        print("프로그램 찾지못함")
+        sys.exit()
+    img1 = np.zeros((85, 372, 3), np.uint8)
+    bs = 701
 
-hwnd = win32gui.FindWindow(None, 'MapleStory')
-hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-if hwnd == 0:
-    print("프로그램 찾지못함")
-    sys.exit()
-img1 = np.zeros((85, 372, 3), np.uint8)
-bs = 701
+    while True:
+        img = creen()
+        mxy = match("find", img, 100, 210, 395, 508, False)
+        if mxy[0] > 0.6 and findt == False:
+            findt = True
+            x = 100 + mxy[2][1] + 55
+            y = 400 + mxy[2][0] + 48
+            img1 = img[x:x + 105, y:y + 5 + (4 * 93)].copy()
+            cv.imwrite(f"images\\{bs}.jpg", img1)
+            bs += 1
+        elif mxy[0] < 0.7:
+            findt = False
 
-while True:
-    img = creen()
-    mxy = match("find", img, 100, 210, 395, 508, False)
-    if mxy[0] > 0.6 and findt == False:
-        findt = True
-        x = 100 + mxy[2][1] + 55
-        y = 400 + mxy[2][0] + 48
-        img1 = img[x:x + 105, y:y + 5 + (4 * 93)].copy()
-        cv.imwrite(f"images\\{bs}.jpg", img1)
-        bs += 1
-    elif mxy[0] < 0.7:
-        findt = False
+        print(mxy[0])
 
-    print(mxy[0])
-
-    cv.imshow('arowb', img1)
-    cv.waitKey(1)
-    time.sleep(0.5)
+        cv.imshow('arowb', img1)
+        cv.waitKey(1)
+        time.sleep(0.5)

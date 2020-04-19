@@ -12,7 +12,7 @@ from utils.utils import *
 import random
 
 ser = serial.Serial(
-    port='COM3',
+    port='COM4',
     baudrate=9600, timeout=0
 )
 
@@ -21,8 +21,8 @@ left, top, right, bot = win32gui.GetWindowRect(hwnd)
 if right - left < 900:
     hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
 
-altk, ctrlk, leftk, rightk, upk, downk, esc = 130, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, True, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
+altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
+xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
 cren = []
 lock = Lock()
 
@@ -32,6 +32,10 @@ class findRhun(Exception):
 
 
 class findBoss(Exception):
+    pass
+
+
+class stopmove(Exception):
     pass
 
 
@@ -51,6 +55,8 @@ class Keyboard:
                 raise findBoss
             elif xy[2]:
                 raise findRhun
+            elif xy[5]:
+                raise stopmove
         if self.status == 2 and self.wait:
             self.ra()
             self.wait = False
@@ -194,11 +200,11 @@ def scmc():
     stimety, stime, xytf = [True, True], [0, 0], [0, 0]
     while True:
         cren = creen()
-        mxyi = match("i", cren, 87, 171, 12, 214)
+        mxyi = match("i", cren, ma[0], ma[1], ma[2], ma[3])
         mxysb = match("sb", cren, 712, 750, 1100, 1400, False)
-        mxyr = match("r", cren, 87, 171, 12, 214)
-        mxyy = match("y", cren, 87, 171, 12, 214, False)
-        mxyg = match("g", cren, 87, 171, 12, 214, False)
+        mxyr = match("r", cren, ma[0], ma[1], ma[2], ma[3])
+        mxyy = match("y", cren, ma[0], ma[1], ma[2], ma[3], False)
+        mxyg = match("g", cren, ma[0], ma[1], ma[2], ma[3], False)
         mxylie = match("lie", cren, 200, 720, 300, 1366)
         mxybs = match("b", cren, 65, 85, 580, 650, False)
         if mxyi[0] > 0.99:
@@ -241,16 +247,17 @@ def scmc():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
 
-        if mxybs[0] > 0.6 and not beep.is_alive():
-            beep = Thread(target=winsound.Beep, args=(300, 3000,))
-            beep.start()
-            # lock.acquire()
-            # xy[4] = True
-            # lock.release()
+        if mxybs[0] > 0.6:
+            # beep = Thread(target=winsound.Beep, args=(300, 3000,))
+            # beep.start()
+            lock.acquire()
+            xy[4] = True
+            lock.release()
         cv.waitKey(1)
 
 
-def goto(x, y):
+def goto(x, y, z=3):
+    key.ra()
     while True:
         if xy[0][0] - x >= 40:
             key.p(leftk)
@@ -262,17 +269,19 @@ def goto(x, y):
             key(altk)
             key(altk)
             key.ra()
-        elif xy[0][0] - x >= 3:
+        elif xy[0][0] - x >= z:
             key.p(leftk, wait=True)
-        elif x - xy[0][0] >= 3:
+        elif x - xy[0][0] >= z:
             key.p(rightk, wait=True)
         elif xy[0][1] > y + 7:
             key(altk, 100, 130)
             key(96, 3000, 3100)
         elif xy[0][1] < y - 7:
+            key.p(upk, 20, 40)
             key.p(downk)
             key(altk)
-            key.ra(1000, 1100)
+            key.r(upk, 20, 40)
+            key.r(downk, 1000, 1100)
         else:
             break
 
@@ -293,6 +302,10 @@ def useai():
                     beep.start()
             stime = time.time()
             print('end gpu')
+
+
+mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 23, 18]]
+ma = mali[1]
 
 
 def stkey():
@@ -322,14 +335,14 @@ def stkey():
                     key(altk, 20, 30)
                     key.r(leftk)
                     key(altk)
-                    key('w', 450,490)
+                    key('w', 450, 490)
             else:
                 if radm >= 19:
                     key.p(leftk, 20, 30)
                     key(altk)
                     key(altk, 20, 30)
                     key.r(leftk)
-                    key(ctrlk, 550,580)
+                    key(ctrlk, 550, 580)
 
                 else:
                     key.p(leftk, 20, 30)
@@ -465,14 +478,114 @@ def stkey():
         key.p(lr, 1200, 1300)
         key.r(lr)
 
+    def caden2():
+
+        while xy[0][0] < 90:
+            if xy[0][1] >= 25:
+                goto(ma[4], ma[5])
+            if xy[0][0] >= 20:
+                key.p(leftk, wait=True)
+            elif xy[0][0] <= 16:
+                key.p(rightk, wait=True)
+            s = random.randint(40, 70)
+            e = random.randint(40, 70)
+            packet = f'(1,218,{s - 5},{e})'
+            ser.write(packet.encode())
+            print(f'(KeyBoard.Write : 218, {s}, {e})')
+            sleep(s / 1000)
+            sleep(e / 1000)
+
+        key.ra()
+        key(rightk, 150, 180)
+        key(altk, 200, 240)
+        key('c', 130, 170)
+        key.p(rightk, 20, 40)
+        key.p(upk, 20, 40)
+        key.p('x', 400, 501)
+        key.r(rightk)
+        key.r(upk)
+        key.r('x')
+        key('x')
+        key('x', 300, 350)
+        key(ctrlk, 400, 450)
+        key(shiftk)
+        key(shiftk, 300, 351)
+        radm = random.randint(0, 1)
+        if radm == 0:
+            key.p(upk, 30, 50)
+            key.p(downk, 100, 140)
+            key(altk, 80, 120)
+            key(altk, 80, 120)
+            key(altk, 500, 550)
+            key(altk)
+            key(altk)
+            key(altk)
+            key.r(upk, 30, 50)
+            key.r(downk)
+
+        else:
+            key.p(upk, 30, 50)
+            key.p(downk, 100, 140)
+            key(altk, 80, 120, 1000, 1050)
+            key.r(upk, 30, 50)
+            key.r(downk)
+
+        key('a')
+        key('a')
+        key('s')
+        key('s', 400, 451)
+        radm = random.randint(0, 1)
+        if radm == 0:
+            key(altk)
+        key.p(upk)
+        key('e')
+        key('e')
+        key.r(upk, 500, 551)
+        key.p(leftk)
+        key(altk)
+        key(altk)
+        key.r(leftk)
+        key(ctrlk, 700, 750)
+        while True:
+            if xy[3]:
+                key(194, 1000, 1100)
+                key(213, 750, 800)
+                xy[3] = False
+            elif xy[0][0] >= 25 + 45:
+                key.p(leftk, 20, 40)
+                key(altk, 110, 140)
+                key(altk)
+                key(altk)
+                key.r(leftk, 20, 40)
+                key(ctrlk, 550, 590)
+            elif xy[0][0] >= 7 + 45:
+                key.p(leftk)
+            else:
+                key.ra()
+                break
+
+        key(altk)
+        key.p(leftk, 20, 40)
+        key.p(upk, 20, 40)
+        key.p('x')
+        key.r(leftk)
+        key.r(upk, 400, 501)
+        key.r('x')
+        key('x')
+        key('x', 300, 351)
+        key('a')
+        key('a', 300, 351)
+        key.p(rightk)
+        key('f', 40, 70, 80, 110)
+        key.r(rightk)
+
     while True:
         try:
             key.change(True)
-            caden()
+            caden2()
         except findRhun:
             key.change(False)
             time.sleep(1)
-            key.ra()
             goto(xy[1][0], xy[1][1])
             key(32, 500, 550)
             img = cren.copy()
@@ -489,9 +602,9 @@ def stkey():
                     for i in labelli:
                         sleep(0.5)
                         key(eval(i[0][:-5] + 'k'))
-                    goto(33, 69)
+                    goto(ma[4], ma[5])
             else:
-                goto(33, 69)
+                goto(ma[4], ma[5])
 
             xy[2] = False
         except findBoss:
@@ -511,7 +624,7 @@ def stkey():
                 if cheak[0] > 0.98:
                     stime = time.time()
                     while time.time() - stime < 4:
-                        player = match("y", cren, 87, 171, 12, 214, False)
+                        player = match("y", cren, ma[0], ma[1], ma[2], ma[3], False)
                         if player[0] > 0.64:
                             key(esc)
                             key(176)
@@ -525,10 +638,16 @@ def stkey():
 
                     if not findplayer:
                         break
-            goto(33, 69)
+            goto(ma[4], ma[5])
             xy[2] = False
             xy[4] = False
             fstart = True
+        except stopmove:
+
+            key.change(False)
+            key(esc)
+            goto(ma[4], ma[5])
+            xy[5] = False
 
 
 def main():
@@ -537,6 +656,7 @@ def main():
     useait = Thread(target=useai, daemon=True)
     scmct.start()
     useait.start()
+    sleep(1)
     stkey()
 
 
