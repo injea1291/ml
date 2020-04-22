@@ -11,17 +11,16 @@ from utils.datasets import *
 from utils.utils import *
 import random
 
-
-
 hwnd = win32gui.FindWindow(None, 'MapleStory')
 left, top, right, bot = win32gui.GetWindowRect(hwnd)
 if right - left < 900:
     hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
 
-altk, shiftk,  ctrlk, leftk, rightk, upk, downk, esc = 130, 129 , 128, 216, 215, 218, 217, 177
+altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
 xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
 cren = []
 lock = Lock()
+
 
 def detect(cfg,
            names,
@@ -94,93 +93,65 @@ def creen():
     win32gui.ReleaseDC(hwnd, hdc)
     return img
 
-def match(a, img, b, c, d, e, f=True):
-    img = img.copy()
-    cutim = img[b:c, d:e]
-    cutimgy = cv.cvtColor(cutim, cv.COLOR_BGR2GRAY)
-    find = cv.imread(f'dataimg\\{a}.jpg', cv.IMREAD_GRAYSCALE)
-    ms = cv.imread(f'dataimg\\{a}m.jpg', cv.IMREAD_GRAYSCALE)
-    w, h = find.shape[::-1]
-    if f:
-        res = cv.matchTemplate(cutimgy, find, cv.TM_CCORR_NORMED, mask=ms)
-    else:
-        res = cv.matchTemplate(cutimgy, find, cv.TM_CCOEFF_NORMED)
+class fi:
+    def __init__(self, findimgname, sx, sy, ex, ey, masktf=True):
 
-    minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
-    cv.rectangle(cutim, maxloc, (maxloc[0] + w, maxloc[1] + h), (255, 0, 0), 1)
+        self.sx, self.sy, self.ex, self.ey = sx, sy, ex, ey
+        self.masktf = masktf
+        self.find = cv.imread(f'dataimg\\{findimgname}.jpg', cv.IMREAD_GRAYSCALE)
+        if self.masktf:
+            self.ms = cv.imread(f'dataimg\\{findimgname}m.jpg', cv.IMREAD_GRAYSCALE)
+        self.w, self.h = self.find.shape[::-1]
 
-    mxy = maxval, [maxloc[0] + w / 2, maxloc[1] + h / 2], list(maxloc), cutim
-    mxy = list(mxy)
-
-    return mxy
-
-while True:
-    cren = creen()
-
-    mxyi = match("r", cren, 86, 158, 12, 250)
-    cv.imshow('asd', mxyi[3])
-    cv.waitKey(1)
-    print(mxyi[0:3])
-
-
-def asdf():
-    key(altk, 200, 240)
-    key('c', 200, 240)
-    key.p(rightk, 20, 40)
-    key.p(upk, 20, 40)
-    key.p('x', 650, 750)
-    key.r(rightk)
-    key.r(upk)
-    key.r('x')
-    key('x')
-    key('x', 300, 350)
-    key(ctrlk, 400, 450)
-    key(shiftk)
-    key(shiftk , 300,301)
-    key.p(downk, 100, 140)
-    key(altk, 80, 120)
-    key(altk, 80, 120)
-    key(altk, 500, 501)
-    key(altk)
-    key(altk)
-    key(altk)
-    key.r(downk)
-    key('a')
-    key('a')
-    key('a')
-    key('s')
-    key('s', 400, 451)
-    key.p(upk)
-    key('e')
-    key('e')
-    key.r(upk, 500, 551)
-    key.p(leftk)
-    key(altk)
-    key(altk)
-    key.r(leftk)
-    key(ctrlk, 700, 750)
-    while True:
-        if xy[3]:
-            key(194, 1000, 1100)
-            key(213, 750, 800)
-            xy[3] = False
-        elif xy[0][0] >= 18 + 53:
-            key.p(leftk, 20, 30)
-            key(altk, 80, 110)
-            key(altk)
-            key(altk)
-            key.r(leftk, 20, 30)
-            key(ctrlk, 550, 551)
-        elif xy[0][0] >= 7 + 53:
-            key.p(leftk)
+    def re(self, creenimg):
+        cutimgy = cv.cvtColor(creenimg[self.sx:self.sy, self.ex:self.ey], cv.COLOR_BGR2GRAY)
+        if self.masktf:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
         else:
-            key.ra()
-            break
-    key.p(leftk, 20, 40)
-    key.p(upk, 20, 40)
-    key.p('x', 650, 750)
-    key.r(leftk)
-    key.r(upk)
-    key.r('x')
-    key('x')
-    key('x', 300, 350)
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
+
+        minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
+
+        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc)
+        mxy = list(mxy)
+
+        return mxy
+
+    def rei(self, creenimg):
+        cutimgy = cv.cvtColor(creenimg[self.sx:self.sy, self.ex:self.ey], cv.COLOR_BGR2GRAY)
+        if self.masktf:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
+        else:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
+
+        minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
+        cv.rectangle(cutimgy, maxloc, (maxloc[0] + self.w, maxloc[1] + self.h), (255, 255, 255), 1)
+        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc), cutimgy
+        mxy = list(mxy)
+        return mxy
+
+mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 92, 54]]
+ma = mali[1]
+fili = list(range(7))
+fili[0] = fi("i", ma[0], ma[1], ma[2], ma[3])
+fili[1] = fi("sb", 712, 750, 1100, 1400, False)
+fili[2] = fi("r", ma[0], ma[1], ma[2], ma[3])
+fili[3] = fi("y", ma[0], ma[1], ma[2], ma[3], False)
+fili[4] = fi("g", ma[0], ma[1], ma[2], ma[3], False)
+fili[5] = fi("lie", 300, 580, 1000, 1366)
+fili[6] = fi("b", 65, 85, 580, 650, False)
+
+def scmc():
+    global xy, beep, cren
+    stimety, stime = [True, True], [0, 0]
+    resul = list(range(len(fili)))
+
+    while True:
+        cren = creen()
+        for e, i in enumerate(fili):
+            resul[e] = i.rei(cren)
+        print(resul[0][:3])
+
+
+
+scmc()

@@ -11,21 +11,6 @@ from utils.datasets import *
 from utils.utils import *
 import random
 
-ser = serial.Serial(
-    port='COM4',
-    baudrate=9600, timeout=0
-)
-
-hwnd = win32gui.FindWindow(None, 'MapleStory')
-left, top, right, bot = win32gui.GetWindowRect(hwnd)
-if right - left < 900:
-    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-
-altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널
-cren = []
-lock = Lock()
-
 
 class findRhun(Exception):
     pass
@@ -42,6 +27,10 @@ class stopmove(Exception):
 class Keyboard:
     def __init__(self):
         self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
+        self.ser = serial.Serial(
+            port='COM3',
+            baudrate=9600, timeout=0
+        )
 
     def __call__(self, KeyValue, es=40, ee=70, ss=40, se=70):
         s, e = self.SendPacket(1, KeyValue, ss, se, es, ee)
@@ -68,7 +57,7 @@ class Keyboard:
         s = random.randint(ss, se)
         e = random.randint(es, ee)
         packet = f'({status},{self.KeyValue},{s - 5},{e})'
-        ser.write(packet.encode())
+        self.ser.write(packet.encode())
         return s, e
 
     def p(self, KeyValue, es=40, ee=70, wait=False):
@@ -90,7 +79,7 @@ class Keyboard:
         e = random.randint(es, ee)
         self.status = 4
         packet = f'({4},{self.KeyValue},{e - 5},{e})'
-        ser.write(packet.encode())
+        self.ser.write(packet.encode())
         print(f'KeyBoard.ReleaseAll')
         sleep(e / 1000)
 
@@ -98,8 +87,68 @@ class Keyboard:
         self.raseof = raseof
 
 
+class fi:
+    def __init__(self, findimgname, sx, sy, ex, ey, masktf=True):
+
+        self.sx, self.sy, self.ex, self.ey = sx, sy, ex, ey
+        self.masktf = masktf
+        self.find = cv.imread(f'dataimg\\{findimgname}.jpg', cv.IMREAD_GRAYSCALE)
+        if self.masktf:
+            self.ms = cv.imread(f'dataimg\\{findimgname}m.jpg', cv.IMREAD_GRAYSCALE)
+        self.w, self.h = self.find.shape[::-1]
+
+    def re(self, creenimg):
+        cutimgy = cv.cvtColor(creenimg[self.sx:self.sy, self.ex:self.ey], cv.COLOR_BGR2GRAY)
+        if self.masktf:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
+        else:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
+
+        minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
+
+        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc)
+        mxy = list(mxy)
+
+        return mxy
+
+    def rei(self, creenimg):
+        cutimgy = cv.cvtColor(creenimg[self.sx:self.sy, self.ex:self.ey], cv.COLOR_BGR2GRAY)
+        if self.masktf:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
+        else:
+            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
+
+        minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
+        cv.rectangle(cutimgy, maxloc, (maxloc[0] + self.w, maxloc[1] + self.h), (255, 255, 255), 1)
+        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc), cutimgy
+        mxy = list(mxy)
+        return mxy
+
+
+hwnd = win32gui.FindWindow(None, 'MapleStory')
+left, top, right, bot = win32gui.GetWindowRect(hwnd)
+if right - left < 900:
+    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+
+altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
+xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
+cren = []
+lock = Lock()
+
 key = Keyboard()
 beep = Thread(target=winsound.Beep, args=(300, 3000,))
+
+mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 92, 54]]
+ma = mali[1]
+
+fili = list(range(7))
+fili[0] = fi("i", ma[0], ma[1], ma[2], ma[3])
+fili[1] = fi("sb", 712, 750, 1100, 1400, False)
+fili[2] = fi("r", ma[0], ma[1], ma[2], ma[3])
+fili[3] = fi("y", ma[0], ma[1], ma[2], ma[3], False)
+fili[4] = fi("g", ma[0], ma[1], ma[2], ma[3], False)
+fili[5] = fi("lie", 300, 580, 1000, 1366)
+fili[6] = fi("b", 65, 85, 580, 650, False)
 
 
 def detect(cfg,
@@ -174,65 +223,40 @@ def creen():
     return img
 
 
-def match(a, img, b, c, d, e, f=True):
-    img = img.copy()
-    cutim = img[b:c, d:e]
-    cutimgy = cv.cvtColor(cutim, cv.COLOR_BGR2GRAY)
-    find = cv.imread(f'dataimg\\{a}.jpg', cv.IMREAD_GRAYSCALE)
-    ms = cv.imread(f'dataimg\\{a}m.jpg', cv.IMREAD_GRAYSCALE)
-    w, h = find.shape[::-1]
-    if f:
-        res = cv.matchTemplate(cutimgy, find, cv.TM_CCORR_NORMED, mask=ms)
-    else:
-        res = cv.matchTemplate(cutimgy, find, cv.TM_CCOEFF_NORMED)
-
-    minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
-    cv.rectangle(cutim, maxloc, (maxloc[0] + w, maxloc[1] + h), (255, 0, 0), 1)
-
-    mxy = maxval, [maxloc[0] + w / 2, maxloc[1] + h / 2], list(maxloc), cutim
-    mxy = list(mxy)
-
-    return mxy
-
-
 def scmc():
     global xy, beep, cren
-    stimety, stime, xytf = [True, True], [0, 0], [0, 0]
+    stimety, stime = [True, True], [0, 0]
+    resul = list(range(len(fili)))
+
     while True:
         cren = creen()
-        mxyi = match("i", cren, ma[0], ma[1], ma[2], ma[3])
-        mxysb = match("sb", cren, 712, 750, 1100, 1400, False)
-        mxyr = match("r", cren, ma[0], ma[1], ma[2], ma[3])
-        mxyy = match("y", cren, ma[0], ma[1], ma[2], ma[3], False)
-        mxyg = match("g", cren, ma[0], ma[1], ma[2], ma[3], False)
-        mxylie = match("lie", cren, 200, 720, 300, 1366)
-        mxybs = match("b", cren, 65, 85, 580, 650, False)
-        if mxyi[0] > 0.99:
-            xy[0] = mxyi[1][0:2]
-            if xy[0] == xytf:
-                if stimety[1]:
-                    stime[1] = time.time()
-                    stimety[1] = False
-                elif time.time() - stime[1] > 10:
+        for e, i in enumerate(fili):
+            resul[e] = i.rei(cren)
 
-                    xy[5] = True
-                    print(xy[5])
-            else:
-                stimety[1] = True
-            xytf = xy[0]
+        if xy[0] == resul[0][1]:
+            if stimety[1]:
+                stime[1] = time.time()
+                stimety[1] = False
+            elif time.time() - stime[1] > 10:
 
-        if mxysb[0] > 0.9:
+                xy[5] = True
+                print(xy[5])
+        else:
+            stimety[1] = True
+
+        if resul[0][0] > 0.99:
+            xy[0] = resul[0][1]
+
+        if resul[1][0] > 0.9:
             lock.acquire()
             xy[3] = True
             lock.release()
-        if mxyr[0] > 0.999 and not math.isinf(mxyr[0]):
-            xy[1] = mxyr[1]
+        if resul[2][0] > 0.999 and not math.isinf(resul[2][0]):
+            xy[1] = resul[2][1]
             lock.acquire()
             xy[2] = True
             lock.release()
-            cv.imshow('asd', mxyr[3])
-            cv.moveWindow('asd', 10, 200)
-        if mxyy[0] > 0.65 or mxyg[0] > 0.8:
+        if resul[3][0] > 0.65 or resul[4][0] > 0.8:
             if stimety[0]:
                 stime[0] = time.time()
                 stimety[0] = False
@@ -243,17 +267,16 @@ def scmc():
         else:
             stimety[0] = True
 
-        if mxylie[0] > 0.99 and not math.isinf(mxylie[0]) and not beep.is_alive():
+        if resul[5][0] > 0.99 and not math.isinf(resul[5][0]) and not beep.is_alive():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
 
-        if mxybs[0] > 0.6:
-            # beep = Thread(target=winsound.Beep, args=(300, 3000,))
-            # beep.start()
-            lock.acquire()
-            xy[4] = True
-            lock.release()
-        cv.waitKey(1)
+        if resul[6][0] > 0.6:
+            beep = Thread(target=winsound.Beep, args=(300, 3000,))
+            beep.start()
+            # lock.acquire()
+            # xy[4] = True
+            # lock.release()
 
 
 def goto(x, y, z=3):
@@ -283,6 +306,7 @@ def goto(x, y, z=3):
             key.r(upk, 20, 40)
             key.r(downk, 1000, 1100)
         else:
+            key.ra()
             break
 
 
@@ -302,10 +326,6 @@ def useai():
                     beep.start()
             stime = time.time()
             print('end gpu')
-
-
-mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 23, 18]]
-ma = mali[1]
 
 
 def stkey():
@@ -480,23 +500,26 @@ def stkey():
 
     def caden2():
 
-        while xy[0][0] < 90:
-            if xy[0][1] >= 25:
-                goto(ma[4], ma[5])
-            if xy[0][0] >= 20:
-                key.p(leftk, wait=True)
-            elif xy[0][0] <= 16:
-                key.p(rightk, wait=True)
-            s = random.randint(40, 70)
-            e = random.randint(40, 70)
-            packet = f'(1,218,{s - 5},{e})'
-            ser.write(packet.encode())
-            print(f'(KeyBoard.Write : 218, {s}, {e})')
-            sleep(s / 1000)
-            sleep(e / 1000)
-
+        while True:
+            if xy[0][0] < 90:
+                if xy[0][1] >= 25:
+                    goto(ma[4], ma[5])
+                    continue
+                if xy[0][0] >= 19:
+                    key.p(leftk, wait=True)
+                elif xy[0][0] <= 17:
+                    key.p(rightk, wait=True)
+                s = random.randint(40, 70)
+                e = random.randint(60, 90)
+                packet = f'(1,218,{s - 5},{e})'
+                key.ser.write(packet.encode())
+                print(f'(KeyBoard.Write : 218, {s}, {e})')
+                sleep(s / 1000)
+                sleep(e / 1000)
+            else:
+                break
         key.ra()
-        key(rightk, 150, 180)
+        key(rightk, 250, 280)
         key(altk, 200, 240)
         key('c', 130, 170)
         key.p(rightk, 20, 40)
@@ -534,31 +557,33 @@ def stkey():
         key('a')
         key('s')
         key('s', 400, 451)
-        radm = random.randint(0, 1)
-        if radm == 0:
+        radm = random.randint(0, 3)
+        if not radm == 0:
             key(altk)
         key.p(upk)
         key('e')
         key('e')
         key.r(upk, 500, 551)
-        key.p(leftk)
+        key.p(upk, 30, 50)
+        key.p(downk, 100, 140)
         key(altk)
         key(altk)
-        key.r(leftk)
-        key(ctrlk, 700, 750)
+        key(altk)
+        key.r(upk, 30, 50)
+        key.r(downk, 300, 400)
         while True:
             if xy[3]:
                 key(194, 1000, 1100)
                 key(213, 750, 800)
                 xy[3] = False
-            elif xy[0][0] >= 25 + 45:
+            elif xy[0][0] >= 71:
                 key.p(leftk, 20, 40)
-                key(altk, 110, 140)
+                key(altk, 90, 110)
                 key(altk)
-                key(altk)
+                key(altk, 40, 60)
                 key.r(leftk, 20, 40)
                 key(ctrlk, 550, 590)
-            elif xy[0][0] >= 7 + 45:
+            elif xy[0][0] >= 58:
                 key.p(leftk)
             else:
                 key.ra()
@@ -588,15 +613,14 @@ def stkey():
             time.sleep(1)
             goto(xy[1][0], xy[1][1])
             key(32, 500, 550)
-            img = cren.copy()
-            mxy = match("find", img, 100, 210, 395, 508, False)
+            mxy = fi("find", 100, 210, 395, 508, False).re(cren)
             print(mxy[0])
             if mxy[0] > 0.6:
                 x = 100 + mxy[2][1] + 55
                 y = 400 + mxy[2][0] + 48
-                cv.imwrite(f'r{time.time()}.jpg', img[x:x + 105, y:y + 5 + (4 * 93)])
+                cv.imwrite(f'r{time.time()}.jpg', cren[x:x + 105, y:y + 5 + (4 * 93)])
                 labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
-                                 img[x:x + 105, y:y + 5 + (4 * 93)])
+                                 cren[x:x + 105, y:y + 5 + (4 * 93)])
                 print(labelli)
                 if len(labelli) == 4:
                     for i in labelli:
@@ -620,11 +644,11 @@ def stkey():
             findplayer = True
 
             while True:
-                cheak = match('ye', cren, 742, 790, 790, 840, False)
+                cheak = fi('ye', 742, 790, 790, 840, False).re(cren)
                 if cheak[0] > 0.98:
                     stime = time.time()
                     while time.time() - stime < 4:
-                        player = match("y", cren, ma[0], ma[1], ma[2], ma[3], False)
+                        player = fi("y", ma[0], ma[1], ma[2], ma[3], False).re(cren)
                         if player[0] > 0.64:
                             key(esc)
                             key(176)
