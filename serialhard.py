@@ -11,16 +11,16 @@ from utils.datasets import *
 from utils.utils import *
 import random
 
-1515151
+
 class findRhun(Exception):
     pass
 
-asdfasdf
+
 class findBoss(Exception):
     pass
 
 
-class stopmovdfse(Exception):
+class stopmove(Exception):
     pass
 
 
