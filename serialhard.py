@@ -20,7 +20,7 @@ class findBoss(Exception):
     pass
 
 
-class stopmove(Exception):
+class stopmovdfse(Exception):
     pass
 
 
