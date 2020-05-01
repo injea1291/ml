@@ -238,7 +238,9 @@ def scmc():
                 stime[1] = time.time()
                 stimety[1] = False
             elif time.time() - stime[1] > 10:
-
+                if not beep.is_alive():
+                    beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                    beep.start()
                 xy[5] = True
                 print(xy[5])
         else:
@@ -271,7 +273,7 @@ def scmc():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
 
-        if resul[6][0] > 0.6:
+        if resul[6][0] > 0.6  and not beep.is_alive():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
             # lock.acquire()
