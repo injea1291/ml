@@ -28,7 +28,7 @@ class Keyboard:
     def __init__(self):
         self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
         self.ser = serial.Serial(
-            port='COM3',
+            port='COM4',
             baudrate=9600, timeout=0
         )
 
@@ -322,7 +322,7 @@ def useai():
             lieli = detect('cfg\\yolov3-spp-2cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
             if lieli:
                 print(lieli)
-                cv.imwrite(f'{time.time()}.jpg', lieimg)
+                cv.imwrite(f'dataset\\{time.time()}.jpg', lieimg)
                 if not beep.is_alive():
                     beep = Thread(target=winsound.Beep, args=(300, 3000,))
                     beep.start()
@@ -620,7 +620,7 @@ def stkey():
             if mxy[0] > 0.6:
                 x = 100 + mxy[2][1] + 55
                 y = 400 + mxy[2][0] + 48
-                cv.imwrite(f'r{time.time()}.jpg', cren[x:x + 105, y:y + 5 + (4 * 93)])
+                cv.imwrite(f'dataset\\r{time.time()}.jpg', cren[x:x + 105, y:y + 5 + (4 * 93)])
                 labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
                                  cren[x:x + 105, y:y + 5 + (4 * 93)])
                 print(labelli)
