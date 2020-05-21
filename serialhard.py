@@ -149,7 +149,7 @@ fili[3] = fi("y", ma[0], ma[1], ma[2], ma[3], False)
 fili[4] = fi("g", ma[0], ma[1], ma[2], ma[3], False)
 fili[5] = fi("lie", 300, 580, 1000, 1366)
 fili[6] = fi("b", 65, 85, 580, 650, False)
-
+# ASDFASDFASDFASDFASDF
 
 def detect(cfg,
            names,
