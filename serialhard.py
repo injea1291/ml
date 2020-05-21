@@ -28,7 +28,7 @@ class Keyboard:
     def __init__(self):
         self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
         self.ser = serial.Serial(
-            port='COM4',
+            port='COM3',
             baudrate=9600, timeout=0
         )
 
@@ -125,10 +125,7 @@ class fi:
         return mxy
 
 
-hwnd = win32gui.FindWindow(None, 'MapleStory')
-left, top, right, bot = win32gui.GetWindowRect(hwnd)
-if right - left < 900:
-    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+
 
 altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
 xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
@@ -237,7 +234,7 @@ def scmc():
             if stimety[1]:
                 stime[1] = time.time()
                 stimety[1] = False
-            elif time.time() - stime[1] > 5:
+            elif time.time() - stime[1] > 10:
                 if not beep.is_alive():
                     beep = Thread(target=winsound.Beep, args=(300, 3000,))
                     beep.start()
@@ -273,11 +270,11 @@ def scmc():
             beep.start()
 
         if resul[6][0] > 0.6 and not beep.is_alive():
-            beep = Thread(target=winsound.Beep, args=(300, 3000,))
-            beep.start()
-            # lock.acquire()
-            # xy[4] = True
-            # lock.release()
+            # beep = Thread(target=winsound.Beep, args=(300, 3000,))
+            # beep.start()
+            lock.acquire()
+            xy[4] = True
+            lock.release()
 
 
 def goto(x, y, z=3):
@@ -510,6 +507,14 @@ def stkey():
                     key.p(leftk, wait=True)
                 elif xy[0][0] <= 17:
                     key.p(rightk, wait=True)
+
+                if xy[4]:
+                    raise findBoss
+                elif xy[2]:
+                    raise findRhun
+                elif xy[5]:
+                    raise stopmove
+
                 s = random.randint(40, 70)
                 e = random.randint(60, 90)
                 packet = f'(1,218,{s - 5},{e})'
@@ -690,6 +695,5 @@ def main():
     useait.start()
     sleep(1)
     stkey()
-
 
 main()
