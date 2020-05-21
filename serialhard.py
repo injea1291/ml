@@ -237,12 +237,11 @@ def scmc():
             if stimety[1]:
                 stime[1] = time.time()
                 stimety[1] = False
-            elif time.time() - stime[1] > 10:
+            elif time.time() - stime[1] > 5:
                 if not beep.is_alive():
                     beep = Thread(target=winsound.Beep, args=(300, 3000,))
                     beep.start()
                 xy[5] = True
-                print(xy[5])
         else:
             stimety[1] = True
 
@@ -273,7 +272,7 @@ def scmc():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
 
-        if resul[6][0] > 0.6  and not beep.is_alive():
+        if resul[6][0] > 0.6 and not beep.is_alive():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
             # lock.acquire()
@@ -671,7 +670,14 @@ def stkey():
         except stopmove:
 
             key.change(False)
-            key(esc)
+
+            while True:
+                a1 = fi("pol", 370, 383, 675, 700, False).rei(cren)
+                if a1[0] > 0.99:
+                    key(esc)
+                else:
+                    break
+
             goto(ma[4], ma[5])
             xy[5] = False
 
