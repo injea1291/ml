@@ -125,7 +125,10 @@ class fi:
         return mxy
 
 
-
+hwnd = win32gui.FindWindow(None, 'MapleStory')
+left, top, right, bot = win32gui.GetWindowRect(hwnd)
+if right - left < 900:
+    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
 
 altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
 xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
