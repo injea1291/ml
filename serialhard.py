@@ -28,7 +28,7 @@ class Keyboard:
     def __init__(self):
         self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
         self.ser = serial.Serial(
-            port='COM3',
+            port='COM4',
             baudrate=9600, timeout=0
         )
 
