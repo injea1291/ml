@@ -22,7 +22,7 @@ class findBoss(Exception):
 
 class stopmove(Exception):
     pass
-
+asdfasdfasdf
 
 class Keyboard:
     def __init__(self):
