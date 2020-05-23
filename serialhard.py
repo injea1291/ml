@@ -26,19 +26,19 @@ class stopmove(Exception):
 
 class Keyboard:
     def __init__(self):
-        self.KeyValue, self.status, self.wait, self.raseof = 0, 0, False, True
+        self.keyvalue, self.status, self.wait, self.raseof = 0, 0, False, True
         self.ser = serial.Serial(
-            port='COM3',
+            port='COM4',
             baudrate=9600, timeout=0
         )
 
-    def __call__(self, KeyValue, es=40, ee=70, ss=40, se=70):
-        s, e = self.SendPacket(1, KeyValue, ss, se, es, ee)
-        print(f'(KeyBoard.Write : {KeyValue}, {s}, {e})')
+    def __call__(self, keyvalue, es=40, ee=70, ss=40, se=70):
+        s, e = self.snedpacket(1, keyvalue, ss, se, es, ee)
+        print(f'(KeyBoard.Write : {keyvalue}, {s}, {e})')
         sleep(s / 1000)
         sleep(e / 1000)
 
-    def SendPacket(self, status, KeyValue, ss, se, es=40, ee=70):
+    def snedpacket(self, status, keyvalue, ss, se, es=40, ee=70):
         if self.raseof:
             if xy[4]:
                 raise findBoss
@@ -49,36 +49,36 @@ class Keyboard:
         if self.status == 2 and self.wait:
             self.ra()
             self.wait = False
-        if type(KeyValue) == str:
-            self.KeyValue = ord(KeyValue)
+        if type(keyvalue) == str:
+            self.keyvalue = ord(keyvalue)
         else:
-            self.KeyValue = KeyValue
+            self.keyvalue = keyvalue
         self.status = status
         s = random.randint(ss, se)
         e = random.randint(es, ee)
-        packet = f'({status},{self.KeyValue},{s - 5},{e})'
+        packet = f'({status},{self.keyvalue},{s - 5},{e})'
         self.ser.write(packet.encode())
         return s, e
 
-    def p(self, KeyValue, es=40, ee=70, wait=False):
-        if self.KeyValue != KeyValue or self.status != 2:
-            s, e = self.SendPacket(2, KeyValue, ss=es, se=ee)
+    def p(self, keyvalue, es=40, ee=70, wait=False):
+        if self.keyvalue != keyvalue or self.status != 2:
+            s, e = self.snedpacket(2, keyvalue, ss=es, se=ee)
             self.wait = wait
-            print(f'(KeyBoard.Press : {KeyValue},{s})')
+            print(f'(KeyBoard.Press : {keyvalue},{s})')
             sleep(s / 1000)
         else:
             e = random.randint(es, ee)
             sleep(e / 1000)
 
-    def r(self, KeyValue, es=40, ee=70):
-        s, e = self.SendPacket(3, KeyValue, ss=es, se=ee)
-        print(f'(KeyBoard.release : {KeyValue},{s})')
+    def r(self, keyvalue, es=40, ee=70):
+        s, e = self.snedpacket(3, keyvalue, ss=es, se=ee)
+        print(f'(KeyBoard.release : {keyvalue},{s})')
         sleep(s / 1000)
 
     def ra(self, es=40, ee=70):
         e = random.randint(es, ee)
         self.status = 4
-        packet = f'({4},{self.KeyValue},{e - 5},{e})'
+        packet = f'({4},{self.keyvalue},{e - 5},{e})'
         self.ser.write(packet.encode())
         print(f'KeyBoard.ReleaseAll')
         sleep(e / 1000)
@@ -88,41 +88,65 @@ class Keyboard:
 
 
 class fi:
-    def __init__(self, findimgname, sx, sy, ex, ey, masktf=True):
-
-        self.sx, self.sy, self.ex, self.ey = sx, sy, ex, ey
+    def __init__(self, findimgname, sx, ex, sy, ey, masktf=False, pixtf=False):
+        self.sx, self.ex, self.sy, self.ey = sx, ex, sy, ey
         self.masktf = masktf
-        self.find = cv.imread(f'dataimg\\{findimgname}.jpg', cv.IMREAD_GRAYSCALE)
+        self.find = cv.imread(f'dataimg\\{findimgname}.png')
+        self.w, self.h = self.find.shape[1::-1]
+        if pixtf:
+            self.pixli = fi.pixex(self.find)
+
+        self.find = cv.cvtColor(self.find, cv.COLOR_BGR2GRAY)
         if self.masktf:
-            self.ms = cv.imread(f'dataimg\\{findimgname}m.jpg', cv.IMREAD_GRAYSCALE)
-        self.w, self.h = self.find.shape[::-1]
+            self.ms = cv.imread(f'dataimg\\{findimgname}m.png', cv.IMREAD_GRAYSCALE)
 
     def re(self, creenimg):
-        cutimgy = cv.cvtColor(creenimg[self.sx:self.sy, self.ex:self.ey], cv.COLOR_BGR2GRAY)
-        if self.masktf:
-            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
-        else:
-            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
+        cutimgy = cv.cvtColor(creenimg[self.sx:self.ex, self.sy:self.ey], cv.COLOR_BGR2GRAY)
+        res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
 
         minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
-
-        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc)
+        cv.rectangle(cutimgy, maxloc, (maxloc[0] + self.w, maxloc[1] + self.h), (255, 255, 255), 1)
+        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc), cutimgy
         mxy = list(mxy)
 
         return mxy
 
-    def rei(self, creenimg):
-        cutimgy = cv.cvtColor(creenimg[self.sx:self.sy, self.ex:self.ey], cv.COLOR_BGR2GRAY)
-        if self.masktf:
-            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
-        else:
-            res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
+    def remask(self, creenimg):
+        cutimgy = cv.cvtColor(creenimg[self.sx:self.ex, self.sy:self.ey], cv.COLOR_BGR2GRAY)
+        # mask match only can TM_SQDIFF and TM_CCORR_NORMED
+        res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
+
+        minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
+
+        cv.rectangle(cutimgy, maxloc, (maxloc[0] + self.w, maxloc[1] + self.h), (255, 255, 255), 1)
+        mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc), cutimgy
+        mxy = list(mxy)
+        return mxy
+
+    def pix(self, creenimg):
+        cutimgy = cv.inRange(creenimg[self.sx:self.ex, self.sy:self.ey], np.array(self.pixli[0]),
+                             np.array(self.pixli[0]))
+
+        for i in self.pixli[1:]:
+            cutimgy = cv.bitwise_or(cutimgy,
+                                    cv.inRange(creenimg[self.sx:self.ex, self.sy:self.ey], np.array(i), np.array(i)))
+        res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED)
 
         minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
         cv.rectangle(cutimgy, maxloc, (maxloc[0] + self.w, maxloc[1] + self.h), (255, 255, 255), 1)
         mxy = maxval, [maxloc[0] + self.w / 2, maxloc[1] + self.h / 2], list(maxloc), cutimgy
         mxy = list(mxy)
         return mxy
+
+    @staticmethod
+    def pixex(img):
+        pixli = []
+        w, h = img.shape[1::-1]
+        for i in range(w):
+            for e in range(h):
+                if not pixli.count(list(img[e, i])):
+                    pixli.append(list(img[e, i]))
+        return pixli
 
 
 hwnd = win32gui.FindWindow(None, 'MapleStory')
@@ -141,15 +165,15 @@ beep = Thread(target=winsound.Beep, args=(300, 3000,))
 mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 92, 54]]
 ma = mali[1]
 
-fili = list(range(7))
-fili[0] = fi("i", ma[0], ma[1], ma[2], ma[3])
-fili[1] = fi("sb", 712, 750, 1100, 1400, False)
-fili[2] = fi("r", ma[0], ma[1], ma[2], ma[3])
-fili[3] = fi("y", ma[0], ma[1], ma[2], ma[3], False)
-fili[4] = fi("g", ma[0], ma[1], ma[2], ma[3], False)
-fili[5] = fi("lie", 300, 580, 1000, 1366)
-fili[6] = fi("b", 65, 85, 580, 650, False)
-# ASDFASDFASDFASDFASDF
+fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+        fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+        fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+        fi("sb", 712, 750, 1100, 1400),
+        fi("lie", 300, 580, 1000, 1366, True),
+        fi("b", 65, 85, 580, 650)]
+
+fili[2].pixli += fi.pixex(cv.imread('dataimg\\g.png'))
+
 
 def detect(cfg,
            names,
@@ -198,26 +222,26 @@ def detect(cfg,
 
 
 def creen():
-    left, top, right, bot = win32gui.GetWindowRect(hwnd)
-    w = right - left
-    h = bot - top
+    le, to, ri, bo = win32gui.GetWindowRect(hwnd)
+    w = ri - le
+    h = bo - to
 
     hdc = win32gui.GetWindowDC(hwnd)
 
     uihdc = win32ui.CreateDCFromHandle(hdc)
 
-    cDC = uihdc.CreateCompatibleDC()
+    cdc = uihdc.CreateCompatibleDC()
     cbmp = win32ui.CreateBitmap()
     cbmp.CreateCompatibleBitmap(uihdc, w, h)
 
-    cDC.SelectObject(cbmp)
-    cDC.BitBlt((0, 0), (w, h), uihdc, (0, 0), win32con.SRCCOPY)
-    signedIntsArray = cbmp.GetBitmapBits(True)
-    img = np.frombuffer(signedIntsArray, dtype='uint8')
+    cdc.SelectObject(cbmp)
+    cdc.BitBlt((0, 0), (w, h), uihdc, (0, 0), win32con.SRCCOPY)
+    signedintsarray = cbmp.GetBitmapBits(True)
+    img = np.frombuffer(signedintsarray, dtype='uint8')
     img.shape = (h, w, 4)
     img = cv.cvtColor(img, cv.COLOR_BGRA2BGR)
     win32gui.DeleteObject(cbmp.GetHandle())
-    cDC.DeleteDC()
+    cdc.DeleteDC()
     uihdc.DeleteDC()
     win32gui.ReleaseDC(hwnd, hdc)
     return img
@@ -230,8 +254,11 @@ def scmc():
 
     while True:
         cren = creen()
-        for e, i in enumerate(fili):
-            resul[e] = i.rei(cren)
+        resul[0] = fili[0].pix(cren)
+        resul[1] = fili[1].pix(cren)
+        resul[2] = fili[2].pix(cren)
+        for e, i in enumerate(fili[3:]):
+            resul[e + 3] = i.re(cren)
 
         if xy[0] == resul[0][1]:
             if stimety[1]:
@@ -248,16 +275,16 @@ def scmc():
         if resul[0][0] > 0.99:
             xy[0] = resul[0][1]
 
-        if resul[1][0] > 0.9:
+        if resul[3][0] > 0.9:
             lock.acquire()
             xy[3] = True
             lock.release()
-        if resul[2][0] > 0.999 and not math.isinf(resul[2][0]):
+        if resul[2][0] > 0.99:
             xy[1] = resul[2][1]
             lock.acquire()
             xy[2] = True
             lock.release()
-        if resul[3][0] > 0.65 or resul[4][0] > 0.8:
+        if resul[1][0] > 0.99:
             if stimety[0]:
                 stime[0] = time.time()
                 stimety[0] = False
@@ -268,11 +295,11 @@ def scmc():
         else:
             stimety[0] = True
 
-        if resul[5][0] > 0.99 and not math.isinf(resul[5][0]) and not beep.is_alive():
+        if resul[4][0] > 0.99 and not beep.is_alive():
             beep = Thread(target=winsound.Beep, args=(300, 3000,))
             beep.start()
 
-        if resul[6][0] > 0.6 and not beep.is_alive():
+        if resul[5][0] > 0.6 and not beep.is_alive():
             # beep = Thread(target=winsound.Beep, args=(300, 3000,))
             # beep.start()
             lock.acquire()
@@ -653,12 +680,12 @@ def stkey():
             findplayer = True
 
             while True:
-                cheak = fi('ye', 742, 790, 790, 840, False).re(cren)
-                if cheak[0] > 0.98:
+                cheak = fili[2].pix(cren)
+                if cheak[0] > 0.99:
                     stime = time.time()
                     while time.time() - stime < 4:
                         player = fi("y", ma[0], ma[1], ma[2], ma[3], False).re(cren)
-                        if player[0] > 0.64:
+                        if player[0] > 0.99:
                             key(esc)
                             key(176)
                             key(rightk, 200, 300)
@@ -680,7 +707,7 @@ def stkey():
             key.change(False)
 
             while True:
-                a1 = fi("pol", 370, 383, 675, 700, False).rei(cren)
+                a1 = fi("pol", 370, 383, 675, 700, False).re(cren)
                 if a1[0] > 0.99:
                     key(esc)
                 else:
@@ -698,5 +725,6 @@ def main():
     useait.start()
     sleep(1)
     stkey()
+
 
 main()
