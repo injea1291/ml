@@ -22,7 +22,7 @@ class findBoss(Exception):
 
 class stopmove(Exception):
     pass
-asdfasdfasdf
+
 
 class Keyboard:
     def __init__(self):
@@ -680,7 +680,7 @@ def stkey():
             findplayer = True
 
             while True:
-                cheak = fili[2].pix(cren)
+                cheak = fi('ye', 742, 790, 790, 840, False).re(cren)
                 if cheak[0] > 0.99:
                     stime = time.time()
                     while time.time() - stime < 4:
