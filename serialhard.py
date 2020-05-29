@@ -581,7 +581,7 @@ def stkey():
                 s = random.randint(40, 70)
                 e = random.randint(60, 90)
                 packet = f'(0,1,218,{s - 5},{e})'
-                key.ser.write(packet.encode())
+                ser.write(packet.encode())
                 print(f'(KeyBoard.Write : 218, {s}, {e})')
                 sleep(s / 1000)
                 sleep(e / 1000)
