@@ -27,10 +27,6 @@ class stopmove(Exception):
 class Keyboard:
     def __init__(self):
         self.keyvalue, self.status, self.wait, self.raseof = 0, 0, False, True
-        self.ser = serial.Serial(
-            port='COM4',
-            baudrate=9600, timeout=0
-        )
 
     def __call__(self, keyvalue, es=40, ee=70, ss=40, se=70):
         s, e = self.snedpacket(1, keyvalue, ss, se, es, ee)
@@ -56,8 +52,8 @@ class Keyboard:
         self.status = status
         s = random.randint(ss, se)
         e = random.randint(es, ee)
-        packet = f'({status},{self.keyvalue},{s - 5},{e})'
-        self.ser.write(packet.encode())
+        packet = f'(0,{status},{self.keyvalue},{s - 5},{e})'
+        ser.write(packet.encode())
         return s, e
 
     def p(self, keyvalue, es=40, ee=70, wait=False):
@@ -78,13 +74,46 @@ class Keyboard:
     def ra(self, es=40, ee=70):
         e = random.randint(es, ee)
         self.status = 4
-        packet = f'({4},{self.keyvalue},{e - 5},{e})'
-        self.ser.write(packet.encode())
+        packet = f'(0,{4},{self.keyvalue},{e - 5},{e})'
+        ser.write(packet.encode())
         print(f'KeyBoard.ReleaseAll')
         sleep(e / 1000)
 
     def change(self, raseof):
         self.raseof = raseof
+
+
+class Mouse:
+    def __call__(self, es=40, ee=70, ss=40, se=70):
+        s = random.randint(ss, se)
+        e = random.randint(es, ee)
+        packet = f'(1,1,0,{s - 5},{e})'
+        ser.write(packet.encode())
+        sleep(s / 1000)
+        sleep(e / 1000)
+
+    def m(self, x, y, ss=40, se=70):
+        def pm(a):
+            if a > 0:
+                return 1
+            elif a == 0:
+                return 0
+            else:
+                return -1
+
+        x1, x2 = divmod(x, 127)
+        y1, y2 = divmod(y, 127)
+
+        for i in range(max(abs(x1), abs(y1))):
+            packet = f'(1,2,{127 * pm(x1)},{127 * pm(y1)},0)'
+            ser.write(packet.encode())
+            x1 -= pm(x1)
+            y1 -= pm(y1)
+            sleep(5 / 1000)
+        s = random.randint(ss, se)
+        packet = f'(1,2,{x2},{y2},{s - 5})'
+        ser.write(packet.encode())
+        sleep(s / 1000)
 
 
 class fi:
@@ -147,32 +176,6 @@ class fi:
                 if not pixli.count(list(img[e, i])):
                     pixli.append(list(img[e, i]))
         return pixli
-
-
-hwnd = win32gui.FindWindow(None, 'MapleStory')
-left, top, right, bot = win32gui.GetWindowRect(hwnd)
-if right - left < 900:
-    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-
-altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
-xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
-cren = []
-lock = Lock()
-
-key = Keyboard()
-beep = Thread(target=winsound.Beep, args=(300, 3000,))
-
-mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 92, 54]]
-ma = mali[1]
-
-fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("sb", 712, 750, 1100, 1400),
-        fi("lie", 300, 580, 1000, 1366, True),
-        fi("b", 65, 85, 580, 650)]
-
-fili[2].pixli += fi.pixex(cv.imread('dataimg\\g.png'))
 
 
 def detect(cfg,
@@ -247,6 +250,67 @@ def creen():
     return img
 
 
+def goto(x, y, z=3):
+    key.ra()
+    while True:
+        if xy[0][0] - x >= 40:
+            key.p(leftk)
+            key(altk)
+            key(altk)
+            key.ra()
+        elif x - xy[0][0] >= 40:
+            key.p(rightk)
+            key(altk)
+            key(altk)
+            key.ra()
+        elif xy[0][0] - x >= z:
+            key.p(leftk, wait=True)
+        elif x - xy[0][0] >= z:
+            key.p(rightk, wait=True)
+        elif xy[0][1] > y + 7:
+            key(altk, 100, 130)
+            key(96, 3000, 3100)
+        elif xy[0][1] < y - 7:
+            key.p(upk, 20, 40)
+            key.p(downk)
+            key(altk)
+            key.r(upk, 20, 40)
+            key.r(downk, 1000, 1100)
+        else:
+            key.ra()
+            break
+
+
+ser = serial.Serial(
+    port='COM4',
+    baudrate=9600, timeout=0
+)
+
+hwnd = win32gui.FindWindow(None, 'MapleStory')
+left, top, right, bot = win32gui.GetWindowRect(hwnd)
+if right - left < 900:
+    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+
+altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
+xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
+cren, lock = [], Lock()
+
+key = Keyboard()
+beep = Thread(target=winsound.Beep, args=(300, 3000,))
+
+mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 92, 54]]  # 신전4, 폐쇄구역3
+ma = mali[1]
+
+fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+        fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+        fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+        fi("sb", 712, 750, 1100, 1400),
+        fi("lie", 300, 580, 1000, 1366, True),
+        fi("b", 65, 85, 580, 650)]
+
+fili[2].pixli += fi.pixex(cv.imread('dataimg\\g.png'))
+
+
 def scmc():
     global xy, beep, cren
     stimety, stime = [True, True], [0, 0]
@@ -305,37 +369,6 @@ def scmc():
             lock.acquire()
             xy[4] = True
             lock.release()
-
-
-def goto(x, y, z=3):
-    key.ra()
-    while True:
-        if xy[0][0] - x >= 40:
-            key.p(leftk)
-            key(altk)
-            key(altk)
-            key.ra()
-        elif x - xy[0][0] >= 40:
-            key.p(rightk)
-            key(altk)
-            key(altk)
-            key.ra()
-        elif xy[0][0] - x >= z:
-            key.p(leftk, wait=True)
-        elif x - xy[0][0] >= z:
-            key.p(rightk, wait=True)
-        elif xy[0][1] > y + 7:
-            key(altk, 100, 130)
-            key(96, 3000, 3100)
-        elif xy[0][1] < y - 7:
-            key.p(upk, 20, 40)
-            key.p(downk)
-            key(altk)
-            key.r(upk, 20, 40)
-            key.r(downk, 1000, 1100)
-        else:
-            key.ra()
-            break
 
 
 def useai():
@@ -547,7 +580,7 @@ def stkey():
 
                 s = random.randint(40, 70)
                 e = random.randint(60, 90)
-                packet = f'(1,218,{s - 5},{e})'
+                packet = f'(0,1,218,{s - 5},{e})'
                 key.ser.write(packet.encode())
                 print(f'(KeyBoard.Write : 218, {s}, {e})')
                 sleep(s / 1000)
@@ -612,7 +645,7 @@ def stkey():
                 key(194, 1000, 1100)
                 key(213, 750, 800)
                 xy[3] = False
-            elif xy[0][0] >= 71:
+            elif xy[0][0] >= 74:
                 key.p(leftk, 20, 40)
                 key(altk, 90, 110)
                 key(altk)
@@ -684,7 +717,7 @@ def stkey():
                 if cheak[0] > 0.99:
                     stime = time.time()
                     while time.time() - stime < 4:
-                        player = fi("y", ma[0], ma[1], ma[2], ma[3], False).re(cren)
+                        player = fili[1].pix(cren)
                         if player[0] > 0.99:
                             key(esc)
                             key(176)
@@ -705,7 +738,7 @@ def stkey():
         except stopmove:
 
             key.change(False)
-
+            key.ra()
             while True:
                 a1 = fi("pol", 370, 383, 675, 700, False).re(cren)
                 if a1[0] > 0.99:
