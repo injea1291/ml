@@ -679,6 +679,7 @@ def stkey():
             caden2()
         except findRhun:
             key.change(False)
+            print("Raise findRhun")
             time.sleep(1)
             goto(xy[1][0], xy[1][1])
             key(32, 500, 550)
@@ -704,6 +705,7 @@ def stkey():
 
             xy[2] = True
             key.change(False)
+            print("Raise findBoss")
             if fstart:
                 key(esc)
                 key(176)
@@ -739,6 +741,7 @@ def stkey():
 
             key.change(False)
             key.ra()
+            print("Raise stopmove")
             while True:
                 a1 = fi("pol", 370, 383, 675, 700, False).re(cren)
                 if a1[0] > 0.99:
