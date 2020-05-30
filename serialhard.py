@@ -4,6 +4,7 @@ import cv2.cv2 as cv
 import win32con
 import win32gui
 import win32ui
+import win32api
 from threading import Thread, Lock
 import winsound
 from models import *
@@ -84,13 +85,13 @@ class Keyboard:
 
 
 class Mouse:
-    def __call__(self, es=40, ee=70, ss=40, se=70):
-        s = random.randint(ss, se)
-        e = random.randint(es, ee)
-        packet = f'(1,1,0,{s - 5},{e})'
-        ser.write(packet.encode())
-        sleep(s / 1000)
-        sleep(e / 1000)
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __call__(self, x, y, ss=40, se=70):
+        x1, y1 = win32api.GetCursorPos()
+        self.m((x + self.x) - x1, (y + self.y) - y1, ss, se)
 
     def m(self, x, y, ss=40, se=70):
         def pm(a):
@@ -101,36 +102,46 @@ class Mouse:
             else:
                 return -1
 
-        x1, x2 = divmod(x, 127)
-        y1, y2 = divmod(y, 127)
-
+        x1, x2 = divmod(x, 127 if x > 0 else -127)
+        y1, y2 = divmod(y, 127 if y > 0 else -127)
+        x1 *= pm(x)
+        y1 *= pm(y)
         for i in range(max(abs(x1), abs(y1))):
-            packet = f'(1,2,{127 * pm(x1)},{127 * pm(y1)},0)'
+            packet = f'(1,2,{127 * pm(x1)},{127 * pm(y1)},1)'
             ser.write(packet.encode())
             x1 -= pm(x1)
             y1 -= pm(y1)
-            sleep(5 / 1000)
+            sleep(6 / 1000)
         s = random.randint(ss, se)
         packet = f'(1,2,{x2},{y2},{s - 5})'
         ser.write(packet.encode())
         sleep(s / 1000)
 
+    def c(self, es=40, ee=70, ss=40, se=70):
+        s = random.randint(ss, se)
+        e = random.randint(es, ee)
+        packet = f'(1,1,0,{s - 5},{e})'
+        ser.write(packet.encode())
+        sleep(s / 1000)
+        sleep(e / 1000)
+
 
 class fi:
-    def __init__(self, findimgname, sx, ex, sy, ey, masktf=False, pixtf=False):
+    def __init__(self, findimgname, sx, ex, sy, ey, pixtf=False):
         self.sx, self.ex, self.sy, self.ey = sx, ex, sy, ey
-        self.masktf = masktf
-        self.find = cv.imread(f'dataimg\\{findimgname}.png')
-        self.w, self.h = self.find.shape[1::-1]
-        if pixtf:
-            self.pixli = fi.pixex(self.find)
+        self.pixli = []
+        if not findimgname is None:
+            self.find = cv.imread(f'dataimg\\{findimgname}.png')
+            self.w, self.h = self.find.shape[1::-1]
+            if pixtf:
+                self.pixli = fi.pixex(self.find)
+            self.find = cv.cvtColor(self.find, cv.COLOR_BGR2GRAY)
 
-        self.find = cv.cvtColor(self.find, cv.COLOR_BGR2GRAY)
-        if self.masktf:
-            self.ms = cv.imread(f'dataimg\\{findimgname}m.png', cv.IMREAD_GRAYSCALE)
+    def setmaskimg(self, maskimg):
+        self.ms = maskimg
 
     def re(self, creenimg):
-        cutimgy = cv.cvtColor(creenimg[self.sx:self.ex, self.sy:self.ey], cv.COLOR_BGR2GRAY)
+        cutimgy = cv.cvtColor(creenimg[self.sy:self.ey, self.sx:self.ex], cv.COLOR_BGR2GRAY)
         res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCOEFF_NORMED)
 
         minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
@@ -141,7 +152,7 @@ class fi:
         return mxy
 
     def remask(self, creenimg):
-        cutimgy = cv.cvtColor(creenimg[self.sx:self.ex, self.sy:self.ey], cv.COLOR_BGR2GRAY)
+        cutimgy = cv.cvtColor(creenimg[self.sy:self.ey, self.sx:self.ex], cv.COLOR_BGR2GRAY)
         # mask match only can TM_SQDIFF and TM_CCORR_NORMED
         res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED, mask=self.ms)
 
@@ -152,13 +163,8 @@ class fi:
         mxy = list(mxy)
         return mxy
 
-    def pix(self, creenimg):
-        cutimgy = cv.inRange(creenimg[self.sx:self.ex, self.sy:self.ey], np.array(self.pixli[0]),
-                             np.array(self.pixli[0]))
-
-        for i in self.pixli[1:]:
-            cutimgy = cv.bitwise_or(cutimgy,
-                                    cv.inRange(creenimg[self.sx:self.ex, self.sy:self.ey], np.array(i), np.array(i)))
+    def piximg(self, creenimg):
+        cutimgy = self.inRange(creenimg[self.sy:self.ey, self.sx:self.ex], self.pixli)
         res = cv.matchTemplate(cutimgy, self.find, cv.TM_CCORR_NORMED)
 
         minval, maxval, minloc, maxloc = cv.minMaxLoc(res)
@@ -167,14 +173,30 @@ class fi:
         mxy = list(mxy)
         return mxy
 
+    def pixpix(self, creenimg):
+        w, h = self.ex - self.sx, self.ey - self.sy
+        creenimg = self.inRange(creenimg[self.sy:self.ey, self.sx:self.ex], self.pixli)
+        for i in range(w):
+            for e in range(h):
+                if creenimg[e, i] == 255:
+                    return [True, i, e]
+        return False
+
+    @staticmethod
+    def inRange(img, rgb):
+        img1 = cv.inRange(img, np.array(rgb[0][0]), np.array(rgb[0][1]))
+        for i in rgb[1:]:
+            img1 = cv.bitwise_or(img1, cv.inRange(img, np.array(i[0]), np.array(i[1])))
+        return img1
+
     @staticmethod
     def pixex(img):
         pixli = []
         w, h = img.shape[1::-1]
         for i in range(w):
             for e in range(h):
-                if not pixli.count(list(img[e, i])):
-                    pixli.append(list(img[e, i]))
+                if not pixli.count([list(img[e, i]), list(img[e, i])]):
+                    pixli.append([list(img[e, i]), list(img[e, i])])
         return pixli
 
 
@@ -224,7 +246,7 @@ def detect(cfg,
     return xyli
 
 
-def creen():
+def creen(hwnd):
     le, to, ri, bo = win32gui.GetWindowRect(hwnd)
     w = ri - le
     h = bo - to
@@ -282,7 +304,7 @@ def goto(x, y, z=3):
 
 
 ser = serial.Serial(
-    port='COM4',
+    port='COM3',
     baudrate=9600, timeout=0
 )
 
@@ -290,25 +312,28 @@ hwnd = win32gui.FindWindow(None, 'MapleStory')
 left, top, right, bot = win32gui.GetWindowRect(hwnd)
 if right - left < 900:
     hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+    left, top, right, bot = win32gui.GetWindowRect(hwnd)
+key = Keyboard()
+mou = Mouse(left, top)
 
-altk, shiftk, ctrlk, leftk, rightk, upk, downk, esc = 130, 129, 128, 216, 215, 218, 217, 177
+altk, shiftk, ctrlk, leftk, rightk, upk, downk, esck, spacek, bsk, tabk, returnk = 130, 129, 128, 216, 215, 218, 217, 177, 32, 8, 179, 176
 xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
 cren, lock = [], Lock()
 
-key = Keyboard()
 beep = Thread(target=winsound.Beep, args=(300, 3000,))
 
-mali = [[86, 171, 12, 214, 33, 69], [86, 158, 12, 250, 92, 54]]  # 신전4, 폐쇄구역3
+mali = [[12, 214, 86, 171, 33, 69], [12, 250, 86, 158, 92, 54]]  # 신전4, 폐쇄구역3
 ma = mali[1]
 
 fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
         fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
         fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("sb", 712, 750, 1100, 1400),
-        fi("lie", 300, 580, 1000, 1366, True),
-        fi("b", 65, 85, 580, 650)]
+        fi("sb", 1100, 1400, 712, 750),
+        fi("lie", 1000, 1366, 300, 580, True),
+        fi("b", 580, 650, 65, 85)]
 
 fili[2].pixli += fi.pixex(cv.imread('dataimg\\g.png'))
+fili[4].setmaskimg(cv.imread('dataimg\\liem.png'))
 
 
 def scmc():
@@ -317,10 +342,10 @@ def scmc():
     resul = list(range(len(fili)))
 
     while True:
-        cren = creen()
-        resul[0] = fili[0].pix(cren)
-        resul[1] = fili[1].pix(cren)
-        resul[2] = fili[2].pix(cren)
+        cren = creen(hwnd)
+        resul[0] = fili[0].piximg(cren)
+        resul[1] = fili[1].piximg(cren)
+        resul[2] = fili[2].piximg(cren)
         for e, i in enumerate(fili[3:]):
             resul[e + 3] = i.re(cren)
 
@@ -683,7 +708,7 @@ def stkey():
             time.sleep(1)
             goto(xy[1][0], xy[1][1])
             key(32, 500, 550)
-            mxy = fi("find", 100, 210, 395, 508, False).re(cren)
+            mxy = fi("find", 395, 508, 100, 210, False).re(cren)
             print(mxy[0])
             if mxy[0] > 0.6:
                 x = 100 + mxy[2][1] + 55
@@ -707,7 +732,7 @@ def stkey():
             key.change(False)
             print("Raise findBoss")
             if fstart:
-                key(esc)
+                key(esck)
                 key(176)
                 key(rightk, 200, 300)
                 key(176, 100, 150)
@@ -715,13 +740,13 @@ def stkey():
             findplayer = True
 
             while True:
-                cheak = fi('ye', 742, 790, 790, 840, False).re(cren)
+                cheak = fi('ye', 790, 840, 742, 790, False).re(cren)
                 if cheak[0] > 0.99:
                     stime = time.time()
                     while time.time() - stime < 4:
-                        player = fili[1].pix(cren)
+                        player = fili[1].piximg(cren)
                         if player[0] > 0.99:
-                            key(esc)
+                            key(esck)
                             key(176)
                             key(rightk, 200, 300)
                             key(176, 100, 150)
@@ -743,9 +768,9 @@ def stkey():
             key.ra()
             print("Raise stopmove")
             while True:
-                a1 = fi("pol", 370, 383, 675, 700, False).re(cren)
+                a1 = fi("pol", 675, 700, 370, 383, False).re(cren)
                 if a1[0] > 0.99:
-                    key(esc)
+                    key(esck)
                 else:
                     break
 
