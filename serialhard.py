@@ -84,6 +84,7 @@ class Keyboard:
         self.raseof = raseof
 
 
+
 class Mouse:
     def __init__(self, x, y):
         self.x = x
@@ -91,6 +92,7 @@ class Mouse:
 
     def __call__(self, x, y, ss=40, se=70):
         x1, y1 = win32api.GetCursorPos()
+        print(f'Mouse.goto : {x},{y}')
         self.m((x + self.x) - x1, (y + self.y) - y1, ss, se)
 
     def m(self, x, y, ss=40, se=70):
@@ -122,8 +124,10 @@ class Mouse:
         e = random.randint(es, ee)
         packet = f'(1,1,0,{s - 5},{e})'
         ser.write(packet.encode())
+        print(f'Mouse.click : {s} {e}')
         sleep(s / 1000)
         sleep(e / 1000)
+
 
 
 class fi:
@@ -304,7 +308,7 @@ def goto(x, y, z=3):
 
 
 ser = serial.Serial(
-    port='COM3',
+    port='COM4',
     baudrate=9600, timeout=0
 )
 
@@ -647,16 +651,28 @@ def stkey():
             key.r(upk, 30, 50)
             key.r(downk)
 
-        key('a')
-        key('a')
-        key('s')
-        key('s', 400, 451)
+        if random.randint(0,1):key('a',90,140)
+        else:
+            key('a')
+            key('a')
+
+        if random.randint(0, 1): key('s', 400, 451)
+        else:
+            key('s')
+            key('s', 400, 451)
+
         radm = random.randint(0, 3)
         if not radm == 0:
             key(altk)
         key.p(upk)
-        key('e')
-        key('e')
+        if radm:
+            key('e')
+            key('e')
+        else:
+            key('e')
+            key('e')
+            key('e')
+
         key.r(upk, 500, 551)
         key.p(upk, 30, 50)
         key.p(downk, 100, 140)
@@ -665,22 +681,33 @@ def stkey():
         key(altk)
         key.r(upk, 30, 50)
         key.r(downk, 300, 400)
+        bat = 0
         while True:
             if xy[3]:
                 key(194, 1000, 1100)
                 key(213, 750, 800)
                 xy[3] = False
             elif xy[0][0] >= 74:
-                key.p(leftk, 20, 40)
-                key(altk, 90, 110)
-                key(altk)
-                key(altk, 40, 60)
-                key.r(leftk, 20, 40)
-                key(ctrlk, 550, 590)
+                if (random.randint(0,1) or bat) and bat < 3:
+                    bat += 1
+                    key.p(leftk, 20, 40)
+                    key(altk, 90, 110)
+                    key(altk)
+                    key(altk, 30, 50)
+                    key.r(leftk, 20, 40)
+                    key('w', 490, 520)
+                else:
+                    key.p(leftk, 20, 40)
+                    key(altk, 50,100)
+                    key(altk, 50,100)
+                    key(altk, 50,100)
+                    key.r(leftk, 20, 40)
+                    key(ctrlk, 550, 590)
             elif xy[0][0] >= 58:
                 key.p(leftk)
             else:
                 key.ra()
+                bat = 0
                 break
 
         key(altk)
@@ -692,8 +719,13 @@ def stkey():
         key.r('x')
         key('x')
         key('x', 300, 351)
-        key('a')
-        key('a', 300, 351)
+        if random.randint(0,1):
+            key('a')
+            key('a', 300, 351)
+        else:
+            key('a')
+            key('a')
+            key('a', 300, 351)
         key.p(rightk)
         key('f', 40, 70, 80, 110)
         key.r(rightk)
@@ -730,7 +762,9 @@ def stkey():
 
             xy[2] = True
             key.change(False)
+            key.ra()
             print("Raise findBoss")
+
             if fstart:
                 key(esck)
                 key(176)
@@ -738,10 +772,10 @@ def stkey():
                 key(176, 100, 150)
                 key(176, 5000, 5100)
             findplayer = True
-
+            cheak = fi(None, 806, 807, 758, 759)
+            cheak.pixli.append([[255, 255, 255], [255, 255, 255]])
             while True:
-                cheak = fi('ye', 790, 840, 742, 790, False).re(cren)
-                if cheak[0] > 0.99:
+                if cheak.pixpix(cren):
                     stime = time.time()
                     while time.time() - stime < 4:
                         player = fili[1].piximg(cren)
@@ -758,10 +792,12 @@ def stkey():
 
                     if not findplayer:
                         break
+
             goto(ma[4], ma[5])
             xy[2] = False
             xy[4] = False
             fstart = True
+
         except stopmove:
 
             key.change(False)

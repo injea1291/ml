@@ -1,3 +1,5 @@
+import time
+
 import serial
 from time import sleep
 import cv2.cv2 as cv
@@ -5,13 +7,9 @@ import win32con
 import win32gui
 import win32ui
 import win32api
-from threading import Thread, Lock
-import winsound
-from models import *
-from utils.datasets import *
-from utils.utils import *
 import random
 import pytesseract
+import numpy as np
 
 
 class Keyboard:
@@ -68,7 +66,7 @@ class fi:
         self.sx, self.ex, self.sy, self.ey = sx, ex, sy, ey
         self.pixli = []
         if not findimgname is None:
-            self.find = cv.imread(f'dataimg\\{findimgname}.png')
+            self.find = findimgname
             self.w, self.h = self.find.shape[1::-1]
             if pixtf:
                 self.pixli = fi.pixex(self.find)
@@ -121,11 +119,11 @@ class fi:
 
     @staticmethod
     def inRange(img, rgb):
-        img = cv.inRange(img, np.array(rgb[0][0]), np.array(rgb[0][1]))
+        img1 = cv.inRange(img, np.array(rgb[0][0]), np.array(rgb[0][1]))
         for i in rgb[1:]:
-            img = cv.bitwise_or(img, cv.inRange(img, np.array(i[0]), np.array(i[1])))
+            img1 = cv.bitwise_or(img, cv.inRange(img1, np.array(i[0]), np.array(i[1])))
 
-        return img
+        return img1
 
     @staticmethod
     def pixex(img):
@@ -171,6 +169,7 @@ class Mouse:
 
     def __call__(self, x, y, ss=40, se=70):
         x1, y1 = win32api.GetCursorPos()
+        print(f'Mouse.goto : {x},{y}')
         self.m((x + self.x) - x1, (y + self.y) - y1, ss, se)
 
     def m(self, x, y, ss=40, se=70):
@@ -202,14 +201,15 @@ class Mouse:
         e = random.randint(es, ee)
         packet = f'(1,1,0,{s - 5},{e})'
         ser.write(packet.encode())
+        print(f'Mouse.click : {s} {e}')
         sleep(s / 1000)
         sleep(e / 1000)
 
 
-def goto(x, y, z=3):
+def goto1(x, y, z=3):
     key.ra()
     while True:
-        resul = fi("i", 12, 202, 87, 133, pixtf=True).piximg(creen(hwnd))
+        resul = fi(cv.imread("dataimg\\i.png"), 12, 202, 87, 133, pixtf=True).piximg(creen(hwnd))
         if resul[1][0] - x >= 40:
             key.p(leftk)
             key(altk)
@@ -240,7 +240,7 @@ def goto(x, y, z=3):
 
 try:
     ser = serial.Serial(
-        port='COM3',
+        port='COM4',
         baudrate=9600, timeout=0
     )
 except:
@@ -256,46 +256,51 @@ altk, shiftk, ctrlk, leftk, rightk, upk, downk, esck, spacek, bsk, tabk, returnk
 mo = Mouse(left, top)
 key = Keyboard()
 fili = [fi(None, 506, 510, 323, 333), fi(None, 476, 750, 558, 559), fi(None, 625, 660, 113, 123),
-        fi(None, 908, 915, 478, 486), fi(None, 1274, 1275, 367, 368)]
-fili[0].pixli.append([[255, 255, 255],[255, 255, 255]])
-fili[1].pixli.append([[255, 255, 255],[255, 255, 255]])
-fili[2].pixli.append([[68, 238, 255],[68, 238, 255]])
-fili[3].pixli.append([[238, 238, 238],[238, 238, 238]])
-fili[4].pixli.append([[68, 238, 255],[68, 238, 255]])
+        fi(None, 1274, 1275, 367, 368)]
+fili[0].pixli.append([[255, 255, 255], [255, 255, 255]])
+fili[1].pixli.append([[255, 255, 255], [255, 255, 255]])
+fili[2].pixli.append([[68, 238, 255], [68, 238, 255]])
+fili[3].pixli.append([[68, 238, 255], [68, 238, 255]])
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
-# cv.imwrite('9.png', creen(hwnd))
 
-
+# cv.imwrite('10.png', creen(hwnd))
 while True:
     while True:
-        resul = fi(None, 1134, 1135, 692, 693)
+        resul = fi(creen(hwnd)[678:683, 1294:1312], 1265, 1285, 677, 684, True)
         resul.pixli.append([[241, 224, 224], [241, 230, 230]])
-        if resul.pixpix(creen(hwnd)):
+        if resul.re(creen(hwnd))[0] > 0.99:
             break
-        goto(68, 28)
+        goto1(68, 28)
         while True:
             key(32, 600, 700)
-            key(32, 600, 700)
-            key(32, 3000, 3100)
-            for i in pytesseract.image_to_string(creen(hwnd)[388:418, 450:560]):
-                try:
-                    int(i)
-                except:
-                    break
-                key(ord(i), 500, 600)
-            key(tabk)
-            key(spacek, 3000, 3100)
-            if fili[4].pixpix(creen(hwnd)):
-                break
-            elif fili[3].pixpix(creen(hwnd)):
-                key(returnk,500,600)
+            key(returnk, 600, 700)
+            key(returnk, 600, 700)
 
-        while True:
-            resul = fili[2].pixpix(creen(hwnd))
-            if resul:
-                break
-            else:
-                key(returnk, 1000, 1100)
+            if not fili[3].pixpix(creen(hwnd)):
+                sleep(2)
+                for i in pytesseract.image_to_string(creen(hwnd)[388:418, 450:560]):
+                    try:
+                        int(i)
+                    except:
+                        break
+                    key(ord(i), 500, 600)
+                key(tabk, 300, 400)
+                key(spacek, 300, 350)
+                if not fili[3].pixpix(creen(hwnd)):
+                    key(returnk, 600, 700)
+                    continue
+            st = time.time()
+            atf = False
+            while time.time() - st < 90:
+                resul = fili[2].pixpix(creen(hwnd))
+                if resul:
+                    atf = True
+                    break
+                else:
+                    mo(731, 436)
+                    mo.c(1000, 1100)
+            if atf: break
+
         sleep(7)
 
         while True:
@@ -306,11 +311,13 @@ while True:
                 resul = fili[0].pixpix(cren)
                 if resul:
                     mo(490, 360)
+                    sleep(5)
                     mo.c()
 
                 resul = fili[1].pixpix(cren)
                 if resul:
                     mo(476 + resul[1], 558)
+                    sleep(5)
                     mo.c()
                     mo(500, 500)
             else:
@@ -322,13 +329,16 @@ while True:
                 key(32, 200, 300)
                 key(32, 200, 300)
                 break
-
+        sleep(7)
 
     key(esck, 500, 550)
     key(upk, 500, 550)
     key(returnk, 500, 550)
     key(returnk, 5000, 5100)
     key(rightk, 500, 550)
+
+    if fi(cv.imread('dataimg\\ddd.png'), 630, 722, 239, 310).re(creen(hwnd))[0] > 0.99:
+        break
     mo(613, 402)
     mo.c(500, 550)
     key(returnk, 500, 550)
@@ -346,3 +356,8 @@ while True:
     key(returnk, 8000, 8100)
     key(esck, 500, 550)
     key(esck, 500, 550)
+    key(esck, 500, 550)
+    key(esck, 500, 550)
+    key(esck, 500, 550)
+    mo(27, 61)
+    mo.c(500, 510)
