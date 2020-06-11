@@ -505,16 +505,16 @@ def stkey():
                 if (random.randint(0, 1) or bat) and bat < 3:
                     bat += 1
                     key.p(leftk, 20, 40)
-                    key(altk, 90, 110)
-                    key(altk)
-                    key(altk, 30, 50)
+                    key(altk, 70, 100)
+                    key(altk, 40, 70)
+                    key(altk, 40, 70)
                     key.r(leftk, 20, 40)
-                    key('w', 490, 520)
+                    key('w', 550,590)
                 else:
                     key.p(leftk, 20, 40)
-                    key(altk, 50, 100)
-                    key(altk, 50, 100)
-                    key(altk, 50, 100)
+                    key(altk, 70 ,100)
+                    key(altk, 40, 70)
+                    key(altk, 40, 70)
                     key.r(leftk, 20, 40)
                     key(ctrlk, 550, 590)
             elif xy[0][0] >= 58:
