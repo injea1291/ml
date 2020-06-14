@@ -43,7 +43,7 @@ class Keyboard1(Keyboard):
 
 
 ser = serial.Serial(
-    port='COM3',
+    port='COM4',
     baudrate=9600, timeout=0
 )
 
@@ -431,7 +431,7 @@ def stkey():
         key.ra()
         key(rightk, 250, 280)
         key(altk, 200, 240)
-        key('c', 130, 170)
+        key('c', 90, 140)
         key.p(rightk, 20, 40)
         key.p(upk, 20, 40)
         key.p('x', 400, 501)
@@ -464,10 +464,10 @@ def stkey():
             key.r(downk)
 
         if random.randint(0, 1):
-            key('a', 90, 140)
+            key('a', 110, 150)
         else:
             key('a')
-            key('a')
+            key('a', 70, 110)
 
         if random.randint(0, 1):
             key('s', 400, 451)
@@ -502,20 +502,21 @@ def stkey():
                 key(213, 750, 800)
                 xy[3] = False
             elif xy[0][0] >= 74:
-                if (random.randint(0, 1) or bat) and bat < 3:
+                if (random.randint(0, 2) == False or bat) and bat < 3:
                     bat += 1
                     key.p(leftk, 20, 40)
                     key(altk, 70, 100)
                     key(altk, 40, 70)
                     key(altk, 40, 70)
                     key.r(leftk, 20, 40)
-                    key('w', 550,590)
+                    key('w', 550, 590)
                 else:
                     key.p(leftk, 20, 40)
-                    key(altk, 70 ,100)
-                    key(altk, 40, 70)
-                    key(altk, 40, 70)
+                    key(altk, 70, 100)
+                    key(altk, 30, 50)
                     key.r(leftk, 20, 40)
+                    key(altk, 40, 70)
+
                     key(ctrlk, 550, 590)
             elif xy[0][0] >= 58:
                 key.p(leftk)
