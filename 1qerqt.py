@@ -618,6 +618,8 @@ def stkey():
             key.change(False)
             key.ra()
             print("Raise stopmove")
+            mou(481,490)
+            mou.c()
             while True:
                 a1 = fi("pol", 675, 700, 370, 383, False).re(cren)
                 if a1[0] > 0.99:
@@ -637,6 +639,6 @@ def main():
     useait.start()
     sleep(1)
     stkey()
-
-
 main()
+
+
