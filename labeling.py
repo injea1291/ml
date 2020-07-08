@@ -44,7 +44,7 @@ class rect:
 
     def mr(self, im, a=False):
         if a:
-            cv.putText(im, self.label, (self.lux, self.rdy), cv.FONT_HERSHEY_SIMPLEX, 2, color=[225, 225, 225])
+            cv.putText(im, self.label, (self.lux, self.rdy), cv.FONT_HERSHEY_SIMPLEX, 1, color=[225, 225, 225])
         cv.rectangle(im, (self.lux, self.luy), (self.rdx, self.rdy), self.color, 0)
 
         for i in range(4):
@@ -131,17 +131,20 @@ def drawrect(event, x, y, flags, param):
 
 
 draw, start, rectli, di, dcount = False, False, [], [], 0
-labelimg, sm, zoom = "output", 3, 2
+labelimg, sm, zoom = "arrow", 3, 2
 
-d = glob.glob(f"images\\{labelimg}\\*.jpg")
-
+d = glob.glob(f"images\\{labelimg}\\*")
+if d[0][-3:] == "png":
+    fie = "png"
+else:
+    fie = "jpg"
 for i in d:
     i = i.split('\\')[2]
     i = i[:-4]
     di.append(int(i))
 di.sort()
 
-img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.jpg")
+img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.{fie}")
 for i in range(zoom):
     img = cv.pyrUp(img)
 
@@ -171,7 +174,7 @@ while (1):
         if len(di) <= dcount:
             dcount = 0
         rfi()
-        img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.jpg")
+        img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.{fie}")
         for i in range(zoom):
             img = cv.pyrUp(img)
         img1 = img.copy()
@@ -183,7 +186,7 @@ while (1):
         if dcount < 0:
             dcount = len(di) - 1
         rfi()
-        img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.jpg")
+        img = cv.imread(f"images\\{labelimg}\\{str(di[dcount])}.{fie}")
         for i in range(zoom):
             img = cv.pyrUp(img)
         img1 = img.copy()
@@ -205,7 +208,7 @@ while (1):
                 i.label = "right"
             elif k == 2490368:  # up arrow
                 i.label = "up"
-            elif k == 116:  # up arrow
+            elif k == 116:  # t
                 i.label = "star"
             else:
                 i.label = labelimg

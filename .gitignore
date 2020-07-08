@@ -1,13 +1,8 @@
 # Project exclude paths
 /images/
 /labels/
-/output/
 /venv/
 /.idea/
-/data/samples/
 /weights/
-/tmp/
 /dataimg/
-/results.txt/
-/train_batch0.png
-/test_batch0.png
+/backup/

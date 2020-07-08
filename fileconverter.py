@@ -41,36 +41,23 @@ def globli(a, a1, tj):
     di.sort()
     return di
 
-
-def renamefile(a, tj, count):
-    b = glob.glob(f"images\\{a}\\*.{tj}")
-    for c, i in enumerate(b):
-        c = c + count
-        os.rename(i, f'images\\{a}\\{c}.jpg')
-        print(c, i)
-
-
-# renamefile('output', 'jpg', 751)
-
-
 def renamefile1(a, a1, a2, count):
     dri = globli(a, a1, a2)
     for c, i in enumerate(dri):
         c = c + count
         print(i, c)
-        os.rename(f'{a}\\{a1}\\{str(i)}.{a2}', f'{a}\\{a1}\\{c}.{a2}')
+        os.rename(f'{a}\\{a1}\\{str(i)}.{a2}', f'{a}\\{a1}\\{c}.png')
 
 
-# renamefile1('images', 'lie', 'jpg', 1)
+# renamefile1('images', 'arrow', 'png', 844)
 
 
 def a2(name):
-    dri = globli("images", name, "jpg")
+    dri = globli("images", name, "png")
     f = open(f"data\\{name}.txt", 'w')
     for i in dri:
-        f.write(f"images/result/{i}.jpg\n")
+        f.write(f"{os.getcwd()}/images/result/{i}.png\n")
     f.close()
-
 
 a2('arrow')
 
@@ -79,7 +66,7 @@ def label(labelimg, zoom, labellist):
     for i in dri:
         f = open(f"labels\\{labelimg}\\{str(i)}.txt", 'r')
         f1 = open(f"labels\\result\\{str(i)}.txt", 'w')
-        img = cv.imread(f"images\\{labelimg}\\{str(i)}.jpg")
+        img = cv.imread(f"images\\{labelimg}\\{str(i)}.png")
         ih, iw = img.shape[:2]
         lines = f.readlines()
         for line in lines:
@@ -94,7 +81,7 @@ def label(labelimg, zoom, labellist):
         f1.close()
 
 
-label('arrow', 4, arrows)
+# label('arrow', 4, arrows)
 
 def label1(labelimg, zoom, labellist):
     dri = globli("labels", labelimg, "txt")

@@ -1,9 +1,7 @@
 from threading import Thread, Lock
 import winsound
-from models import *
-from utils.datasets import *
-from utils.utils import *
 from cls import *
+import time
 
 
 class findRhun(Exception):
@@ -42,10 +40,16 @@ class Keyboard1(Keyboard):
         return s, e
 
 
-ser = serial.Serial(
-    port='COM4',
-    baudrate=9600, timeout=0
-)
+try:
+    ser = serial.Serial(
+        port='COM4',
+        baudrate=9600, timeout=0
+    )
+except:
+    ser = serial.Serial(
+        port='COM3',
+        baudrate=9600, timeout=0
+    )
 
 hwnd = win32gui.FindWindow(None, 'MapleStory')
 left, top, right, bot = win32gui.GetWindowRect(hwnd)
@@ -61,64 +65,19 @@ cren, lock = [], Lock()
 
 beep = Thread(target=winsound.Beep, args=(300, 3000,))
 
-mali = [[12, 214, 86, 171, 33, 69], [12, 250, 86, 158, 92, 54]]  # 신전4, 폐쇄구역3
+mali = [[10, 212, 86, 171, 33, 69], [10, 248, 86, 158, 92, 54]]  # 신전4, 폐쇄구역3
 ma = mali[1]
 
 fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
         fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
         fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("sb", 1100, 1400, 712, 750),
-        fi("lie", 1000, 1366, 300, 580, True),
-        fi("b", 580, 650, 65, 85)]
+        fi(None, 1204, 1205, 744, 745),
+        fi("lie", 1000, 1366, 298, 578, True),
+        fi("b", 580, 650, 63, 83)]
 
 fili[2].pixli += fi.pixex(cv.imread('dataimg\\g.png'))
+fili[3].pixli.append([[185, 169, 152], [185, 169, 152]])
 fili[4].setmaskimg(cv.imread('dataimg\\liem.png'))
-
-
-def detect(cfg,
-           names,
-           weights,
-           images,
-           img_size=416,
-           conf_thres=0.3,
-           iou_thres=0.6,
-           zoom=1):
-    xyli = []
-    device = torch_utils.select_device()
-    model = Darknet(cfg, img_size)
-    attempt_download(weights)
-    model.load_state_dict(torch.load(weights, map_location=device)['model'])
-    model.to(device).eval()
-
-    # dataset = LoadImages(source, img_size=img_size)
-    img = letterbox(images, new_shape=img_size)[0]
-    # Convert
-    img = img[:, :, ::-1].transpose(2, 0, 1)
-    img = np.ascontiguousarray(img)
-    # ------------------------------------------------
-
-    classes = load_classes(names)
-    img = torch.from_numpy(img).to(device)
-    img = img.float()  # uint8 to fp16/32
-    img /= 255.0
-    if img.ndimension() == 3:
-        img = img.unsqueeze(0)
-
-    pred = model(img)[0]
-
-    pred = non_max_suppression(pred, conf_thres, iou_thres, multi_label=False, classes=None, agnostic=False)
-
-    for i, det in enumerate(pred):  # detections image
-        if det is not None and len(det):
-            det[:, :4] = scale_coords(img.shape[2:], det[:, :4], images.shape).round()
-
-            for *xyxy, conf, cls in det:
-                label = '%s %.2f' % (classes[int(cls)], conf)
-                xyxy[0:4] = list(map(lambda a: int(a) * zoom, xyxy[0:4]))
-                xyli.append([label, xyxy[0], xyxy[1], xyxy[2], xyxy[3]])
-            xyli.sort(key=lambda xyli: xyli[1])
-
-    return xyli
 
 
 def goto(x, y, z=3):
@@ -162,8 +121,9 @@ def scmc():
         resul[0] = fili[0].piximg(cren)
         resul[1] = fili[1].piximg(cren)
         resul[2] = fili[2].piximg(cren)
-        for e, i in enumerate(fili[3:]):
-            resul[e + 3] = i.re(cren)
+        resul[3] = fili[3].pixpix(cren)
+        for e, i in enumerate(fili[4:]):
+            resul[e + 4] = i.re(cren)
 
         if xy[0] == resul[0][1]:
             if stimety[1]:
@@ -180,10 +140,11 @@ def scmc():
         if resul[0][0] > 0.99:
             xy[0] = resul[0][1]
 
-        if resul[3][0] > 0.9:
+        if resul[3]:
             lock.acquire()
             xy[3] = True
             lock.release()
+
         if resul[2][0] > 0.99:
             xy[1] = resul[2][1]
             lock.acquire()
@@ -208,7 +169,7 @@ def scmc():
             # beep = Thread(target=winsound.Beep, args=(300, 3000,))
             # beep.start()
             lock.acquire()
-            xy[4] = True
+            # xy[4] = True
             lock.release()
 
 
@@ -219,7 +180,8 @@ def useai():
         time.sleep(1)
         if time.time() - stime > 5 and not xy[2]:
             lieimg = cren.copy()
-            lieli = detect('cfg\\yolov3-spp-2cls.cfg', 'data\\lie.names', 'weights\\lie.pt', lieimg)
+            lieli = performDetect(lieimg, thresh=.5, configPath="./cfg/yolov42.cfg",
+                                  weightPath="backup\\yolov4-2cls_last.weights", metaPath="./data/lie.data")
             if lieli:
                 print(lieli)
                 cv.imwrite(f'dataset\\{time.time()}.jpg', lieimg)
@@ -232,10 +194,10 @@ def useai():
 
 def stkey():
     global xy, beep, cren
-    fstart = False
+    fstart = True
     swcont = 0
 
-    def caden():
+    def cadensin():
         nonlocal swcont
         swcont += 1
 
@@ -400,7 +362,7 @@ def stkey():
         key.p(lr, 1200, 1300)
         key.r(lr)
 
-    def caden2():
+    def cadenmo():
 
         while True:
             if xy[0][0] < 90:
@@ -548,30 +510,21 @@ def stkey():
     while True:
         try:
             key.change(True)
-            caden2()
+            cadenmo()
         except findRhun:
             key.change(False)
             print("Raise findRhun")
             time.sleep(1)
             goto(xy[1][0], xy[1][1])
             key(32, 500, 550)
-            mxy = fi("find", 395, 508, 100, 210, False).re(cren)
-            print(mxy[0])
-            if mxy[0] > 0.6:
-                x = 100 + mxy[2][1] + 55
-                y = 400 + mxy[2][0] + 48
-                cv.imwrite(f'dataset\\r{time.time()}.jpg', cren[x:x + 105, y:y + 5 + (4 * 93)])
-                labelli = detect('cfg\\yolov3-spp-4cls.cfg', 'data\\arrow.names', 'weights\\arrow.pt',
-                                 cren[x:x + 105, y:y + 5 + (4 * 93)])
-                print(labelli)
-                if len(labelli) == 4:
-                    for i in labelli:
-                        sleep(0.5)
-                        key(eval(i[0][:-5] + 'k'))
-                    goto(ma[4], ma[5])
-            else:
+            labelli = performDetect(cren[150:314, 450:900], thresh=.5, configPath="./cfg/yolov44.cfg",
+                                    weightPath="backup\\yolov4-4cls_last.weights", metaPath="./data/arrow.data")
+            print(labelli)
+            if len(labelli) == 4:
+                for i in labelli:
+                    sleep(0.5)
+                    key(eval(i[0] + 'k'))
                 goto(ma[4], ma[5])
-
             xy[2] = False
         except findBoss:
 
@@ -587,7 +540,7 @@ def stkey():
                 key(176, 100, 150)
                 key(176, 5000, 5100)
             findplayer = True
-            cheak = fi(None, 806, 807, 758, 759)
+            cheak = fi(None, 806, 807, 756, 757)
             cheak.pixli.append([[255, 255, 255], [255, 255, 255]])
             while True:
                 if cheak.pixpix(cren):
@@ -618,15 +571,16 @@ def stkey():
             key.change(False)
             key.ra()
             print("Raise stopmove")
-            mou(481,490)
+            mou(481, 490)
             mou.c()
-            while True:
-                a1 = fi("pol", 675, 700, 370, 383, False).re(cren)
-                if a1[0] > 0.99:
-                    key(esck)
-                else:
-                    break
-
+            key.p(leftk)
+            key(altk)
+            key(altk)
+            key.ra()
+            key.p(rightk)
+            key(altk)
+            key(altk)
+            key.ra()
             goto(ma[4], ma[5])
             xy[5] = False
 
@@ -639,6 +593,5 @@ def main():
     useait.start()
     sleep(1)
     stkey()
+
 main()
-
-
