@@ -2,3 +2,4 @@ classes=2
 train=data/lie.txt
 valid=data/lie.txt
 names=data/lie.names
+backup = backup/

@@ -52,6 +52,7 @@ cwd = os.path.dirname(__file__)
 os.environ['PATH'] = cwd + ';' + os.environ['PATH']
 winGPUdll = os.path.join(cwd, "yolo_cpp_dll.dll")
 winNoGPUdll = os.path.join(cwd, "yolo_cpp_dll_nogpu.dll")
+
 lib = CDLL(winGPUdll, RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
@@ -220,14 +221,14 @@ def detect_image(net, meta, custom_image_bgr, thresh=.5, hier_thresh=.5, nms=.45
 netMain = None
 metaMain = None
 altNames = None
-change = ""
+
 
 def performDetect(image, configPath="./cfg/yolov4.cfg", weightPath="yolov4.weights", metaPath="./cfg/coco.data",
                   thresh=0.25, hier_thresh=.5, nms=.45, debug=False, showImage=False):
     # Import the global variables. This lets us instance Darknet once, then just call performDetect() again without instancing again
-    global metaMain, netMain, altNames, change  # pylint: disable=W0603
+    global metaMain, netMain, altNames  # pylint: disable=W0603
     assert 0 < thresh < 1, "Threshold should be a float between zero and one (non-inclusive)"
-    if netMain is None or change != weightPath:
+    if netMain is None:
         netMain = load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
         metaMain = load_meta(metaPath.encode("ascii"))
         try:
@@ -248,7 +249,7 @@ def performDetect(image, configPath="./cfg/yolov4.cfg", weightPath="yolov4.weigh
                     pass
         except Exception:
             pass
-    change = weightPath
+
     detections = detect_image(netMain, metaMain, image, thresh, hier_thresh, nms, debug)
     detections.sort(key=lambda xyli: xyli[2][0])
     if showImage:
@@ -273,7 +274,7 @@ def performDetect(image, configPath="./cfg/yolov4.cfg", weightPath="yolov4.weigh
 
             cv.rectangle(image, (xCoord, yCoord), (xCoord + xEntent, yCoord + yExtent), (255, 255, 255), 0)
         cv.imshow("23", image)
-
+        cv.waitKey(0)
     return detections
 
 

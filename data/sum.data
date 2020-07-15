@@ -1,0 +1,5 @@
+classes=6
+train=data/sum.txt
+valid=data/sum.txt
+names=data/sum.names
+backup = backup/

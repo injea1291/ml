@@ -180,14 +180,16 @@ def useai():
         time.sleep(1)
         if time.time() - stime > 5 and not xy[2]:
             lieimg = cren.copy()
-            lieli = performDetect(lieimg, thresh=.5, configPath="./cfg/yolov42.cfg",
-                                  weightPath="backup\\yolov4-2cls_last.weights", metaPath="./data/lie.data")
-            if lieli:
-                print(lieli)
-                cv.imwrite(f'dataset\\{time.time()}.jpg', lieimg)
-                if not beep.is_alive():
-                    beep = Thread(target=winsound.Beep, args=(300, 3000,))
-                    beep.start()
+            print('start gpu')
+            lieli = performDetect(lieimg, thresh=.5, configPath="./cfg/yolov46.cfg",
+                                      weightPath="backup\\yolov4-6cls_last.weights", metaPath="./data/sum.data")
+            print(lieli)
+            for i in lieli:
+                if i[0] == 'star' or i[0] == 'lie':
+                    cv.imwrite(f'dataset\\{time.time()}.jpg', lieimg)
+                    if not beep.is_alive():
+                        beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                        beep.start()
             stime = time.time()
             print('end gpu')
 
@@ -297,70 +299,69 @@ def stkey():
                 key.r(leftk, 5, 5)
                 break
 
-    def zero(lr):
+    def zero():
         def dob(keyV, d1, d2):
             key(keyV, 41, 70)
             key(keyV, 41, 70)
             key(keyV, d1, d2)
+        for i in [leftk,rightk]:
+            radm = random.randint(1, 101)
+            if radm <= 20:
+                key('v', 450, 500)
+                key('v', 450, 500)
+                key('v', 450, 490)
+            elif radm >= 60:
+                key('v', 41, 70)
+                key.p('v', 40, 70)
+                key.r('v', 350, 400)
 
-        radm = random.randint(1, 101)
-        if radm <= 20:
-            key('v', 450, 500)
-            key('v', 450, 500)
-            key('v', 450, 490)
-        elif radm >= 60:
-            key('v', 41, 70)
-            key.p('v', 40, 70)
-            key.r('v', 350, 400)
+                key('v', 41, 70)
+                key.p('v', 40, 70)
+                key.r('v', 350, 400)
 
-            key('v', 41, 70)
-            key.p('v', 40, 70)
-            key.r('v', 350, 400)
+                key('v', 41, 70)
+                key.p('v', 40, 70)
+                key.r('v', 350, 390)
+            else:
+                key.p('v', 1450, 1500)
+                key.r('v')
 
-            key('v', 41, 70)
-            key.p('v', 40, 70)
-            key.r('v', 350, 390)
-        else:
-            key.p('v', 1450, 1500)
-            key.r('v')
+            dob(upk, 41, 70)
 
-        dob(upk, 41, 70)
-
-        key(altk, 41, 70)
-        key(altk, 41, 70)
-        key(altk, 70, 100)
-        radm = random.randint(0, 2)
-        if radm == 0:
-            key('c', 870, 920)
-            key('c', 870, 920)
-        else:
-            key('c', 1650, 1700)
-
-        key('s', 650, 700)
-
-        key(altk, 41, 70)
-        key(altk, 41, 70)
-        key(altk, 160, 190)
-        dob(lr, 200, 250)
-        key('s', 40, 70)
-        radm = random.randint(0, 4)
-        if radm == 0:
-            key(ctrlk, 40, 70)
-            key(ctrlk, 41, 70)
-        else:
-            key(ctrlk, 41, 70)
-
-        key.p(downk, 41, 60)
-
-        radm = random.randint(0, 2)
-        if radm == 1:
             key(altk, 41, 70)
+            key(altk, 41, 70)
+            key(altk, 70, 100)
+            radm = random.randint(0, 2)
+            if radm == 0:
+                key('c', 870, 920)
+                key('c', 870, 920)
+            else:
+                key('c', 1650, 1700)
 
-        key(altk, 41, 70)
-        key.r(downk, 530, 580)
+            key('s', 650, 700)
 
-        key.p(lr, 1200, 1300)
-        key.r(lr)
+            key(altk, 41, 70)
+            key(altk, 41, 70)
+            key(altk, 160, 190)
+            dob(i, 200, 250)
+            key('s', 40, 70)
+            radm = random.randint(0, 4)
+            if radm == 0:
+                key(ctrlk, 40, 70)
+                key(ctrlk, 41, 70)
+            else:
+                key(ctrlk, 41, 70)
+            key.p(upk, 20, 40)
+            key.p(downk)
+            key(altk)
+            if random.randint(0, 2) == 1:
+                key(altk, 41, 70)
+            key.r(upk, 20, 40)
+            key.r(downk, 1000, 1100)
+
+
+            key.p(i, 1200, 1300)
+            key.r(i)
 
     def cadenmo():
 
@@ -511,6 +512,7 @@ def stkey():
         try:
             key.change(True)
             cadenmo()
+
         except findRhun:
             key.change(False)
             print("Raise findRhun")
@@ -522,6 +524,8 @@ def stkey():
             print(labelli)
             if len(labelli) == 4:
                 for i in labelli:
+                    if i[0] == 'star' or i[0] == 'lie':
+                        break
                     sleep(0.5)
                     key(eval(i[0] + 'k'))
                 goto(ma[4], ma[5])
@@ -593,5 +597,6 @@ def main():
     useait.start()
     sleep(1)
     stkey()
+
 
 main()

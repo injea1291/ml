@@ -4,7 +4,7 @@ import os
 
 arrows = ["right", "left", "up", "down"]
 lies = ["star", "lie"]
-
+sum = ["right", "left", "up", "down","star", "lie"]
 def yolotomy(lis, ih, iw, zoom):
     xmin = max(float(lis[0]) - float(lis[2]) / 2, 0)
     xmax = min(float(lis[0]) + float(lis[2]) / 2, 1)
@@ -46,10 +46,10 @@ def renamefile1(a, a1, a2, count):
     for c, i in enumerate(dri):
         c = c + count
         print(i, c)
-        os.rename(f'{a}\\{a1}\\{str(i)}.{a2}', f'{a}\\{a1}\\{c}.png')
+        os.rename(f'{a}\\{a1}\\{str(i)}.{a2}', f'{a}\\{a1}\\{c}.txt')
 
 
-# renamefile1('images', 'arrow', 'png', 844)
+# renamefile1('labels', 'arrow', 'txt', 50000)
 
 
 def a2(name):
@@ -59,7 +59,7 @@ def a2(name):
         f.write(f"{os.getcwd()}/images/result/{i}.png\n")
     f.close()
 
-a2('arrow')
+# a2('sum')
 
 def label(labelimg, zoom, labellist):
     dri = globli('labels', labelimg, "txt")
@@ -81,7 +81,7 @@ def label(labelimg, zoom, labellist):
         f1.close()
 
 
-# label('arrow', 4, arrows)
+# label('arrow', 4, sum)
 
 def label1(labelimg, zoom, labellist):
     dri = globli("labels", labelimg, "txt")
