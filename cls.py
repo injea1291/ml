@@ -10,6 +10,7 @@ import win32api
 from ctypes import *
 import os
 import subprocess
+import asyncio
 
 class BOX(Structure):
     _fields_ = [("x", c_float),
@@ -328,9 +329,6 @@ class Keyboard:
         print(f'KeyBoard.ReleaseAll')
         sleep(e / 1000)
 
-
-
-
 class Mouse:
     def __init__(self, x, y, ser):
         self.x = x + 2
@@ -376,12 +374,106 @@ class Mouse:
         sleep(e / 1000)
 
 
+class asyncKey:
+
+    def __init__(self, ser):
+        self.keyvalue, self.status, self.wait, self.raseof = 0, 0, False, True
+        self.ser = ser
+
+    async def __call__(self, keyvalue, es=40, ee=70, ss=40, se=70):
+        s, e = await self.sendpacket(1, keyvalue, ss, se, es, ee)
+        print(f'(KeyBoard.Write : {keyvalue}, {s}, {e})')
+        await asyncio.sleep(s / 1000)
+        await asyncio.sleep(e / 1000)
+
+    async def sendpacket(self, status, keyvalue, ss, se, es=40, ee=70):
+        if self.status == 2 and self.wait:
+            await self.ra()
+            self.wait = False
+        if type(keyvalue) is str:
+            self.keyvalue = ord(keyvalue)
+        else:
+            self.keyvalue = keyvalue
+        self.status = status
+        s = random.randint(ss, se)
+        e = random.randint(es, ee)
+        packet = f'(0,{status},{self.keyvalue},{s - 5},{e})'
+        self.ser.write(packet.encode())
+        return s, e
+
+    async def p(self, keyvalue, ss=40, se=70, wait=False):
+        if self.keyvalue != keyvalue or self.status != 2:
+            s, e = await self.sendpacket(2, keyvalue, ss=ss, se=se)
+            self.wait = wait
+            print(f'(KeyBoard.Press : {keyvalue},{s})')
+            await asyncio.sleep(s / 1000)
+        else:
+            s = random.randint(ss, se)
+            await asyncio.sleep(s / 1000)
+
+    async def r(self, keyvalue, es=40, ee=70):
+        s, e = await self.sendpacket(3, keyvalue, ss=es, se=ee)
+        print(f'(KeyBoard.release : {keyvalue},{s})')
+        await asyncio.sleep(s / 1000)
+
+    async def ra(self, es=40, ee=70):
+        e = random.randint(es, ee)
+        self.status = 4
+        packet = f'(0,{4},{self.keyvalue},{e - 5},{e})'
+        self.ser.write(packet.encode())
+        print(f'KeyBoard.ReleaseAll')
+        await asyncio.sleep(e / 1000)
+
+class asyncMouse:
+    def __init__(self, x, y, ser):
+        self.x = x + 2
+        self.y = y
+        self.ser = ser
+
+    async def __call__(self, x, y, ss=40, se=70):
+        x1, y1 = win32api.GetCursorPos()
+        print(f'Mouse.goto : {x},{y}')
+        await self.m((x + self.x) - x1, (y + self.y) - y1, ss, se)
+
+    async def m(self, x, y, ss=40, se=70):
+        def pm(a):
+            if a > 0:
+                return 1
+            elif a == 0:
+                return 0
+            else:
+                return -1
+
+        x1, x2 = divmod(x, 127 if x > 0 else -127)
+        y1, y2 = divmod(y, 127 if y > 0 else -127)
+        x1 *= pm(x)
+        y1 *= pm(y)
+        for i in range(max(abs(x1), abs(y1))):
+            packet = f'(1,2,{127 * pm(x1)},{127 * pm(y1)},1)'
+            self.ser.write(packet.encode())
+            x1 -= pm(x1)
+            y1 -= pm(y1)
+            await asyncio.sleep(6 / 1000)
+        s = random.randint(ss, se)
+        packet = f'(1,2,{x2},{y2},{s - 5})'
+        self.ser.write(packet.encode())
+        await asyncio.sleep(s / 1000)
+
+    async def c(self, es=40, ee=70, ss=40, se=70):
+        s = random.randint(ss, se)
+        e = random.randint(es, ee)
+        packet = f'(1,1,0,{s - 5},{e})'
+        self.ser.write(packet.encode())
+        print(f'Mouse.click : {s} {e}')
+        await asyncio.sleep(s / 1000)
+        await asyncio.sleep(e / 1000)
+
 class fi:
     def __init__(self, findimgname, sx, ex, sy, ey, pixtf=False):
         self.sx, self.ex, self.sy, self.ey = sx, ex, sy, ey
         self.pixli = []
         if not findimgname is None:
-            self.find = cv.imread(f'dataimg\\{findimgname}.png')
+            self.find = cv.imread(f'data\\dataimg\\{findimgname}.png')
             self.w, self.h = self.find.shape[1::-1]
             if pixtf:
                 self.pixli = fi.pixex(self.find)
