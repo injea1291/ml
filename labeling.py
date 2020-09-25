@@ -210,6 +210,8 @@ while (1):
                 i.label = "up"
             elif k == 116:  # t
                 i.label = "star"
+            elif k == ord('l'):
+                i.label = "lie"
             else:
                 i.label = labelimg
 

@@ -9,7 +9,7 @@ import win32con
 import win32api
 from ctypes import *
 import os
-
+import subprocess
 
 class BOX(Structure):
     _fields_ = [("x", c_float),
@@ -279,21 +279,22 @@ def performDetect(image, configPath="./cfg/yolov4.cfg", weightPath="yolov4.weigh
 
 
 class Keyboard:
+
     def __init__(self, ser):
         self.keyvalue, self.status, self.wait, self.raseof = 0, 0, False, True
         self.ser = ser
 
     def __call__(self, keyvalue, es=40, ee=70, ss=40, se=70):
-        s, e = self.snedpacket(1, keyvalue, ss, se, es, ee)
+        s, e = self.sendpacket(1, keyvalue, ss, se, es, ee)
         print(f'(KeyBoard.Write : {keyvalue}, {s}, {e})')
         sleep(s / 1000)
         sleep(e / 1000)
 
-    def snedpacket(self, status, keyvalue, ss, se, es=40, ee=70):
+    def sendpacket(self, status, keyvalue, ss, se, es=40, ee=70):
         if self.status == 2 and self.wait:
             self.ra()
             self.wait = False
-        if type(keyvalue) == str:
+        if type(keyvalue) is str:
             self.keyvalue = ord(keyvalue)
         else:
             self.keyvalue = keyvalue
@@ -304,18 +305,18 @@ class Keyboard:
         self.ser.write(packet.encode())
         return s, e
 
-    def p(self, keyvalue, es=40, ee=70, wait=False):
+    def p(self, keyvalue, ss=40, se=70, wait=False):
         if self.keyvalue != keyvalue or self.status != 2:
-            s, e = self.snedpacket(2, keyvalue, ss=es, se=ee)
+            s, e = self.sendpacket(2, keyvalue, ss=ss, se=se)
             self.wait = wait
             print(f'(KeyBoard.Press : {keyvalue},{s})')
             sleep(s / 1000)
         else:
-            e = random.randint(es, ee)
-            sleep(e / 1000)
+            s = random.randint(ss, se)
+            sleep(s / 1000)
 
     def r(self, keyvalue, es=40, ee=70):
-        s, e = self.snedpacket(3, keyvalue, ss=es, se=ee)
+        s, e = self.sendpacket(3, keyvalue, ss=es, se=ee)
         print(f'(KeyBoard.release : {keyvalue},{s})')
         sleep(s / 1000)
 
@@ -327,8 +328,7 @@ class Keyboard:
         print(f'KeyBoard.ReleaseAll')
         sleep(e / 1000)
 
-    def change(self, raseof):
-        self.raseof = raseof
+
 
 
 class Mouse:
@@ -418,11 +418,13 @@ class fi:
 
     def pixpix(self, creenimg):
         w, h = self.ex - self.sx, self.ey - self.sy
+
         creenimg = self.inRange(creenimg[self.sy:self.ey, self.sx:self.ex], self.pixli)
+
         for i in range(w):
             for e in range(h):
                 if creenimg[e, i] == 255:
-                    return [True, i, e]
+                    return i, e
         return False
 
     @staticmethod
@@ -443,13 +445,14 @@ class fi:
         return pixli
 
 
-def creen(hwnd):
+def creen(hwnd=None):
+    if hwnd is None:
+        hwnd = win32gui.GetDesktopWindow()
     le, to, ri, bo = win32gui.GetWindowRect(hwnd)
     w = ri - le
     h = bo - to
 
     hdc = win32gui.GetWindowDC(hwnd)
-
     uihdc = win32ui.CreateDCFromHandle(hdc)
 
     cdc = uihdc.CreateCompatibleDC()
@@ -468,3 +471,26 @@ def creen(hwnd):
     win32gui.ReleaseDC(hwnd, hdc)
     return img
 
+def findarduino():
+    asd = os.getcwd().replace("\\", "/")
+    a = subprocess.check_output(f"{asd}/devcon find @*USB*", shell=True, stderr=subprocess.STDOUT)
+    try:
+        ser = serial.Serial(
+            port=f"{a[a.find('Arduino'):].split()[1][4:-1]}",
+            baudrate=9600, timeout=0
+        )
+    except:
+        ser = serial.Serial(
+            port=f"{a[a.find('Bossa'):].split()[2][5:-1]}",
+            baudrate=9600, timeout=0
+        )
+
+    return ser
+
+def findmapl():
+    hwnd = win32gui.FindWindow(None, 'MapleStory')
+    left, top, right, bot = win32gui.GetWindowRect(hwnd)
+    if right - left < 900:
+        hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+        left, top, right, bot = win32gui.GetWindowRect(hwnd)
+    return hwnd, left, top, right, bot

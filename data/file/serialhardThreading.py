@@ -16,68 +16,52 @@ class stopmove(Exception):
     pass
 
 
+class stoprunning(Exception):
+    pass
+
+
 class Keyboard1(Keyboard):
-    def snedpacket(self, status, keyvalue, ss, se, es=40, ee=70):
+    def __getattribute__(self, item):
+        if item == "raseof" or item == "change":
+            return super().__getattribute__(item)
         if self.raseof:
-            if xy[4]:
+            if rli['findBoss']:
                 raise findBoss
-            elif xy[2]:
+            elif rli['findRhun']:
                 raise findRhun
-            elif xy[5]:
+            elif rli['stopmove']:
                 raise stopmove
-        if self.status == 2 and self.wait:
-            self.ra()
-            self.wait = False
-        if type(keyvalue) == str:
-            self.keyvalue = ord(keyvalue)
-        else:
-            self.keyvalue = keyvalue
-        self.status = status
-        s = random.randint(ss, se)
-        e = random.randint(es, ee)
-        packet = f'(0,{status},{self.keyvalue},{s - 5},{e})'
-        self.ser.write(packet.encode())
-        return s, e
+        if rli['stoprunning']:
+            raise stoprunning
+
+        return super().__getattribute__(item)
+
+    def change(self, raseof):
+        self.raseof = raseof
 
 
-try:
-    ser = serial.Serial(
-        port='COM4',
-        baudrate=9600, timeout=0
-    )
-except:
-    ser = serial.Serial(
-        port='COM3',
-        baudrate=9600, timeout=0
-    )
-
-hwnd = win32gui.FindWindow(None, 'MapleStory')
-left, top, right, bot = win32gui.GetWindowRect(hwnd)
-if right - left < 900:
-    hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-    left, top, right, bot = win32gui.GetWindowRect(hwnd)
+ser = findarduino()
+hwnd, left, top, right, bot = findmapl()
 key = Keyboard1(ser)
 mou = Mouse(left, top, ser)
 
 altk, shiftk, ctrlk, leftk, rightk, upk, downk, esck, spacek, bsk, tabk, returnk = 130, 129, 128, 216, 215, 218, 217, 177, 32, 8, 179, 176
-xy = [[], [], False, False, False, False]  # 캐릭터위치, 룬 위치, 룬/AI, 심, 채널, 스탑
-cren, lock = [], Lock()
-
-beep = Thread(target=winsound.Beep, args=(300, 3000,))
-
-mali = [[10, 212, 86, 171, 33, 69], [10, 248, 86, 158, 92, 54]]  # 신전4, 폐쇄구역3
-ma = mali[1]
+ma = [10, 248, 86, 158, 92, 54]  # [10, 212, 86, 171, 33, 69] 신전4, [10, 248, 86, 158, 92, 54] 폐쇄구역3
+xy = [[], []]  # 0캐릭터위치, 1룬 위치
+onfli = {'ai': True, 'sim': False}
+rli = {'stoprunning': False, 'findBoss': False, 'stopmove': False, 'findRhun': False}
+cren, lock, beep = [], Lock(), Thread(target=winsound.Beep, args=(300, 3000,))
 
 fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
         fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
         fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi(None, 1204, 1205, 744, 745),
+        fi(None, 1345, 1346, 744, 745),
         fi("lie", 1000, 1366, 298, 578, True),
         fi("b", 580, 650, 63, 83)]
 
-fili[2].pixli += fi.pixex(cv.imread('dataimg\\g.png'))
+fili[2].pixli += fi.pixex(cv.imread('data\\dataimg\\g.png'))
 fili[3].pixli.append([[185, 169, 152], [185, 169, 152]])
-fili[4].setmaskimg(cv.imread('dataimg\\liem.png'))
+fili[4].setmaskimg(cv.imread('data\\dataimg\\liem.png'))
 
 
 def goto(x, y, z=3):
@@ -112,90 +96,110 @@ def goto(x, y, z=3):
 
 
 def scmc():
-    global xy, beep, cren
+    global xy, beep, cren, onfli, rli, stkeyt
     stimety, stime = [True, True], [0, 0]
     resul = list(range(len(fili)))
-
+    onf = True
     while True:
-        cren = creen(hwnd)
-        resul[0] = fili[0].piximg(cren)
-        resul[1] = fili[1].piximg(cren)
-        resul[2] = fili[2].piximg(cren)
-        resul[3] = fili[3].pixpix(cren)
-        for e, i in enumerate(fili[4:]):
-            resul[e + 4] = i.re(cren)
+        if win32api.GetAsyncKeyState(win32con.VK_F1):
+            if onf:
+                rli['stoprunning'] = True
+                onfli['ai'] = False
+                onf = False
+                print(onf)
+                sleep(1)
+            else:
+                onf = True
+                stkeyt = Thread(target=stkey)
+                stkeyt.start()
+                print(onf)
+                sleep(1)
+        if onf:
+            cren = creen(hwnd)
+            resul[0] = fili[0].piximg(cren)
+            resul[1] = fili[1].piximg(cren)
+            resul[2] = fili[2].piximg(cren)
+            resul[3] = fili[3].pixpix(cren)
 
-        if xy[0] == resul[0][1]:
-            if stimety[1]:
-                stime[1] = time.time()
-                stimety[1] = False
-            elif time.time() - stime[1] > 10:
-                if not beep.is_alive():
-                    beep = Thread(target=winsound.Beep, args=(300, 3000,))
-                    beep.start()
-                xy[5] = True
-        else:
-            stimety[1] = True
+            for e, i in enumerate(fili[4:]):
+                resul[e + 4] = i.re(cren)
 
-        if resul[0][0] > 0.99:
-            xy[0] = resul[0][1]
-
-        if resul[3]:
-            lock.acquire()
-            xy[3] = True
-            lock.release()
-
-        if resul[2][0] > 0.99:
-            xy[1] = resul[2][1]
-            lock.acquire()
-            xy[2] = True
-            lock.release()
-        if resul[1][0] > 0.99:
-            if stimety[0]:
-                stime[0] = time.time()
-                stimety[0] = False
-            elif time.time() - stime[0] > 5 and not beep.is_alive():
-                print('사람')
-                beep = Thread(target=winsound.Beep, args=(300, 3000,))
-                beep.start()
-        else:
-            stimety[0] = True
-
-        if resul[4][0] > 0.99 and not beep.is_alive():
-            beep = Thread(target=winsound.Beep, args=(300, 3000,))
-            beep.start()
-
-        if resul[5][0] > 0.6 and not beep.is_alive():
-            # beep = Thread(target=winsound.Beep, args=(300, 3000,))
-            # beep.start()
-            lock.acquire()
-            # xy[4] = True
-            lock.release()
-
-
-def useai():
-    global xy, beep, cren
-    stime = time.time()
-    while True:
-        time.sleep(1)
-        if time.time() - stime > 5 and not xy[2]:
-            lieimg = cren.copy()
-            print('start gpu')
-            lieli = performDetect(lieimg, thresh=.5, configPath="./cfg/yolov46.cfg",
-                                      weightPath="backup\\yolov4-6cls_last.weights", metaPath="./data/sum.data")
-            print(lieli)
-            for i in lieli:
-                if i[0] == 'star' or i[0] == 'lie':
-                    cv.imwrite(f'dataset\\{time.time()}.jpg', lieimg)
+            if xy[0] == resul[0][1]:
+                if stimety[1]:
+                    stime[1] = time.time()
+                    stimety[1] = False
+                elif time.time() - stime[1] > 10:
                     if not beep.is_alive():
                         beep = Thread(target=winsound.Beep, args=(300, 3000,))
                         beep.start()
+                    rli['stopmove'] = True
+            else:
+                stimety[1] = True
+
+            if resul[0][0] > 0.99:
+                xy[0] = resul[0][1]
+            lock.acquire()
+
+            if resul[3]:
+                onfli['sim'] = True
+
+
+            if resul[2][0] > 0.99:
+                xy[1] = resul[2][1]
+                rli['findRhun'] = True
+
+            if resul[1][0] > 0.99:
+                if stimety[0]:
+                    stime[0] = time.time()
+                    stimety[0] = False
+                elif time.time() - stime[0] > 5 and not beep.is_alive():
+                    print('사람')
+                    beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                    beep.start()
+            else:
+                stimety[0] = True
+
+            if resul[4][0] > 0.99 and not beep.is_alive():
+                beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                beep.start()
+
+            if resul[5][0] > 0.6 and not beep.is_alive():
+                beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                beep.start()
+                rli['findBoss'] = True
+            lock.release()
+
+def useai():
+    global beep
+    stime = time.time()
+    a = 1
+    while True:
+        time.sleep(1)
+        if onfli['ai']:
+            if time.time() - stime > 5:
+                lieimg = cren.copy()
+                print('start gpu')
+                lieli = performDetect(lieimg, thresh=.5, configPath="./cfg/yolov46.cfg",
+                                      weightPath="backup\\yolov4-6cls_last.weights", metaPath="./data/sum.data")
+
+                cv.imwrite(f'data\\lastimg\\{a}.png', lieimg)
+                a += 1
+                if a == 30:
+                    a = 1
+                print(lieli)
+                for i in lieli:
+                    if i[0] == 'star' or i[0] == 'lie':
+                        if not beep.is_alive():
+                            beep = Thread(target=winsound.Beep, args=(300, 3000,))
+                            beep.start()
+                stime = time.time()
+                print('end gpu')
+        else:
             stime = time.time()
-            print('end gpu')
 
 
 def stkey():
-    global xy, beep, cren
+    global xy, beep, cren, onfli, rli
     fstart = True
     swcont = 0
 
@@ -285,10 +289,10 @@ def stkey():
         key.r(leftk, 41, 60)
         wcont = 0
         while True:
-            if xy[3]:
+            if onfli['sim']:
                 key(194, 1000, 1100)
                 key(213, 750, 800)
-                xy[3] = False
+                onfli['sim'] = False
             elif xy[0][0] >= 31 + 33:
                 atkctrl()
             elif xy[0][0] >= 10 + 33:
@@ -304,7 +308,8 @@ def stkey():
             key(keyV, 41, 70)
             key(keyV, 41, 70)
             key(keyV, d1, d2)
-        for i in [leftk,rightk]:
+
+        for i in [leftk, rightk]:
             radm = random.randint(1, 101)
             if radm <= 20:
                 key('v', 450, 500)
@@ -359,7 +364,6 @@ def stkey():
             key.r(upk, 20, 40)
             key.r(downk, 1000, 1100)
 
-
             key.p(i, 1200, 1300)
             key.r(i)
 
@@ -375,11 +379,13 @@ def stkey():
                 elif xy[0][0] <= 17:
                     key.p(rightk, wait=True)
 
-                if xy[4]:
+                if rli['stoprunning']:
+                    raise stoprunning
+                elif rli['findBoss']:
                     raise findBoss
-                elif xy[2]:
+                elif rli['findRhun']:
                     raise findRhun
-                elif xy[5]:
+                elif rli['stopmove']:
                     raise stopmove
 
                 s = random.randint(40, 70)
@@ -460,10 +466,10 @@ def stkey():
         key.r(downk, 300, 400)
         bat = 0
         while True:
-            if xy[3]:
-                key(194, 1000, 1100)
-                key(213, 750, 800)
-                xy[3] = False
+            if onfli['sim']:
+                key('4', 1000, 1100)
+                key('3', 750, 800)
+                onfli['sim'] = False
             elif xy[0][0] >= 74:
                 if (random.randint(0, 2) == False or bat) and bat < 3:
                     bat += 1
@@ -485,7 +491,6 @@ def stkey():
                 key.p(leftk)
             else:
                 key.ra()
-                bat = 0
                 break
 
         key(altk)
@@ -510,93 +515,94 @@ def stkey():
 
     while True:
         try:
-            key.change(True)
-            cadenmo()
+            try:
+                key.change(True)
+                onfli['ai'] = True
+                cadenmo()
 
-        except findRhun:
-            key.change(False)
-            print("Raise findRhun")
-            time.sleep(1)
-            goto(xy[1][0], xy[1][1])
-            key(32, 500, 550)
-            labelli = performDetect(cren[150:314, 450:900], thresh=.5, configPath="./cfg/yolov44.cfg",
-                                    weightPath="backup\\yolov4-4cls_last.weights", metaPath="./data/arrow.data")
-            print(labelli)
-            if len(labelli) == 4:
-                for i in labelli:
-                    if i[0] == 'star' or i[0] == 'lie':
-                        break
-                    sleep(0.5)
-                    key(eval(i[0] + 'k'))
-                goto(ma[4], ma[5])
-            xy[2] = False
-        except findBoss:
+            except findRhun:
+                onfli['ai'] = False
+                key.change(False)
+                rli['findRhun'] = False
+                print("Raise findRhun")
 
-            xy[2] = True
-            key.change(False)
-            key.ra()
-            print("Raise findBoss")
-
-            if fstart:
-                key(esck)
-                key(176)
-                key(rightk, 200, 300)
-                key(176, 100, 150)
-                key(176, 5000, 5100)
-            findplayer = True
-            cheak = fi(None, 806, 807, 756, 757)
-            cheak.pixli.append([[255, 255, 255], [255, 255, 255]])
-            while True:
-                if cheak.pixpix(cren):
-                    stime = time.time()
-                    while time.time() - stime < 4:
-                        player = fili[1].piximg(cren)
-                        if player[0] > 0.99:
-                            key(esck)
-                            key(176)
-                            key(rightk, 200, 300)
-                            key(176, 100, 150)
-                            key(176, 2000, 2100)
-                            findplayer = True
+                time.sleep(1)
+                goto(xy[1][0], xy[1][1])
+                key(32, 500, 550)
+                labelli = performDetect(cren[150:314, 450:900], thresh=.5, configPath="./cfg/yolov46.cfg",
+                                        weightPath="backup\\yolov4-6cls_last.weights", metaPath="./data/sum.data")
+                print(labelli)
+                if len(labelli) == 4:
+                    for i in labelli:
+                        if i[0] == 'star' or i[0] == 'lie':
                             break
-                        else:
-                            findplayer = False
+                        sleep(0.5)
+                        key(eval(i[0] + 'k'))
 
-                    if not findplayer:
-                        break
+            except findBoss:
+                onfli['ai'] = False
+                key.change(False)
+                rli['findBoss'] = False
+                print("Raise findBoss")
+                key.ra()
 
-            goto(ma[4], ma[5])
-            xy[2] = False
-            xy[4] = False
-            fstart = True
+                if fstart:
+                    key(esck)
+                    key(176)
+                    key(rightk, 200, 300)
+                    key(176, 100, 150)
+                    key(176, 5000, 5100)
+                findplayer = True
+                cheak = fi(None, 806, 807, 756, 757)
+                cheak.pixli.append([[255, 255, 255], [255, 255, 255]])
+                while True:
+                    if cheak.pixpix(cren):
+                        stime = time.time()
+                        while time.time() - stime < 4:
+                            player = fili[1].piximg(cren)
+                            if player[0] > 0.99:
+                                key(esck)
+                                key(176)
+                                key(rightk, 200, 300)
+                                key(176, 100, 150)
+                                key(176, 2000, 2100)
+                                findplayer = True
+                                break
+                            else:
+                                findplayer = False
 
-        except stopmove:
+                        if not findplayer:
+                            break
 
+                goto(ma[4], ma[5])
+
+                fstart = True
+
+            except stopmove:
+                key.change(False)
+                rli['stopmove'] = False
+                print("Raise stopmove")
+                key.ra()
+
+                mou(481, 490)
+                mou.c()
+                key.p(leftk)
+                key(altk)
+                key(altk)
+                key.ra()
+                key.p(rightk)
+                key(altk)
+                key(altk)
+                key.ra()
+                goto(ma[4], ma[5])
+
+        except stoprunning:
             key.change(False)
+            rli['stoprunning'] = False
             key.ra()
-            print("Raise stopmove")
-            mou(481, 490)
-            mou.c()
-            key.p(leftk)
-            key(altk)
-            key(altk)
-            key.ra()
-            key.p(rightk)
-            key(altk)
-            key(altk)
-            key.ra()
-            goto(ma[4], ma[5])
-            xy[5] = False
+            print("Raise stoprunning")
+            break
 
 
 def main():
     beep.start()
-    scmct = Thread(target=scmc, daemon=True)
-    useait = Thread(target=useai, daemon=True)
-    scmct.start()
-    useait.start()
-    sleep(1)
-    stkey()
-
-
-main()
