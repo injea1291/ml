@@ -1,7 +1,6 @@
 import random
-import serial
 import cv2.cv2 as cv
-from time import sleep
+import time
 import numpy as np
 import win32gui
 import win32ui
@@ -9,8 +8,11 @@ import win32con
 import win32api
 from ctypes import *
 import os
-import subprocess
 import asyncio
+import itertools
+import winreg
+import serial
+
 
 class BOX(Structure):
     _fields_ = [("x", c_float),
@@ -279,163 +281,138 @@ def performDetect(image, configPath="./cfg/yolov4.cfg", weightPath="yolov4.weigh
     return detections
 
 
-class Keyboard:
+class checkfps():
+    def __init__(self):
+        self.time = time.time()
+        self.count = 0
 
+    def print(self):
+        try:
+            self.count += 1
+            print(self.count / (time.time() - self.time))
+        except ZeroDivisionError:
+            print("pass")
+            pass
+
+
+class hardhid:
     def __init__(self, ser):
-        self.keyvalue, self.status, self.wait, self.raseof = 0, 0, False, True
         self.ser = ser
+
+
+class Keyboard(hardhid):
+    def __init__(self, ser):
+        super().__init__(ser)
+        self.keyvalue, self.status, self.wait = 0, 0, False
 
     def __call__(self, keyvalue, es=40, ee=70, ss=40, se=70):
-        s, e = self.sendpacket(1, keyvalue, ss, se, es, ee)
-        print(f'(KeyBoard.Write : {keyvalue}, {s}, {e})')
-        sleep(s / 1000)
-        sleep(e / 1000)
+        self.status = 1
+        rd = random.randint(ss, se)
+        ed = random.randint(es, ee)
+        print(f'(KeyBoard.Write : {keyvalue},{rd},{ed})')
+        self.ser(f"10{self.incoding(keyvalue)}")
+        time.sleep(rd / 1000)
+        self.ser(f"11{self.incoding(keyvalue)}")
+        time.sleep(ed / 1000)
 
-    def sendpacket(self, status, keyvalue, ss, se, es=40, ee=70):
-        if self.status == 2 and self.wait:
-            self.ra()
-            self.wait = False
+    def incoding(self, keyvalue):
         if type(keyvalue) is str:
             self.keyvalue = ord(keyvalue)
         else:
             self.keyvalue = keyvalue
-        self.status = status
-        s = random.randint(ss, se)
-        e = random.randint(es, ee)
-        packet = f'(0,{status},{self.keyvalue},{s - 5},{e})'
-        self.ser.write(packet.encode())
-        return s, e
+        return self.keyvalue
 
-    def p(self, keyvalue, ss=40, se=70, wait=False):
+    def p(self, keyvalue, s=40, e=70, wait=False):
+        sd = random.randint(s, e)
         if self.keyvalue != keyvalue or self.status != 2:
-            s, e = self.sendpacket(2, keyvalue, ss=ss, se=se)
+            if self.wait:
+                self.ra()
+                self.wait = False
+            self.status = 2
             self.wait = wait
-            print(f'(KeyBoard.Press : {keyvalue},{s})')
-            sleep(s / 1000)
-        else:
-            s = random.randint(ss, se)
-            sleep(s / 1000)
+            print(f'(KeyBoard.Press : {keyvalue},{sd})')
+            self.ser(f"10{self.incoding(keyvalue)}")
+        time.sleep(sd / 1000)
 
-    def r(self, keyvalue, es=40, ee=70):
-        s, e = self.sendpacket(3, keyvalue, ss=es, se=ee)
-        print(f'(KeyBoard.release : {keyvalue},{s})')
-        sleep(s / 1000)
+    def r(self, keyvalue, s=40, e=70):
+        self.status = 3
+        sd = random.randint(s, e)
+        print(f'(KeyBoard.release : {keyvalue},{sd})')
+        self.ser(f"11{self.incoding(keyvalue)}")
+        time.sleep(sd / 1000)
 
-    def ra(self, es=40, ee=70):
-        e = random.randint(es, ee)
+    def ra(self, s=40, e=70):
         self.status = 4
-        packet = f'(0,{4},{self.keyvalue},{e - 5},{e})'
-        self.ser.write(packet.encode())
-        print(f'KeyBoard.ReleaseAll')
-        sleep(e / 1000)
-
-class Mouse:
-    def __init__(self, x, y, ser):
-        self.x = x + 2
-        self.y = y
-        self.ser = ser
-
-    def __call__(self, x, y, ss=40, se=70):
-        x1, y1 = win32api.GetCursorPos()
-        print(f'Mouse.goto : {x},{y}')
-        self.m((x + self.x) - x1, (y + self.y) - y1, ss, se)
-
-    def m(self, x, y, ss=40, se=70):
-        def pm(a):
-            if a > 0:
-                return 1
-            elif a == 0:
-                return 0
-            else:
-                return -1
-
-        x1, x2 = divmod(x, 127 if x > 0 else -127)
-        y1, y2 = divmod(y, 127 if y > 0 else -127)
-        x1 *= pm(x)
-        y1 *= pm(y)
-        for i in range(max(abs(x1), abs(y1))):
-            packet = f'(1,2,{127 * pm(x1)},{127 * pm(y1)},1)'
-            self.ser.write(packet.encode())
-            x1 -= pm(x1)
-            y1 -= pm(y1)
-            sleep(6 / 1000)
-        s = random.randint(ss, se)
-        packet = f'(1,2,{x2},{y2},{s - 5})'
-        self.ser.write(packet.encode())
-        sleep(s / 1000)
-
-    def c(self, es=40, ee=70, ss=40, se=70):
-        s = random.randint(ss, se)
-        e = random.randint(es, ee)
-        packet = f'(1,1,0,{s - 5},{e})'
-        self.ser.write(packet.encode())
-        print(f'Mouse.click : {s} {e}')
-        sleep(s / 1000)
-        sleep(e / 1000)
+        sd = random.randint(s, e)
+        print(f'KeyBoard.ReleaseAll : {sd}')
+        self.ser("12")
+        time.sleep(sd / 1000)
 
 
-class asyncKey:
-
+class asyncKey(hardhid):
     def __init__(self, ser):
-        self.keyvalue, self.status, self.wait, self.raseof = 0, 0, False, True
-        self.ser = ser
+        super().__init__(ser)
+        self.keyvalue, self.status, self.wait = 0, 0, False
 
     async def __call__(self, keyvalue, es=40, ee=70, ss=40, se=70):
-        s, e = await self.sendpacket(1, keyvalue, ss, se, es, ee)
-        print(f'(KeyBoard.Write : {keyvalue}, {s}, {e})')
-        await asyncio.sleep(s / 1000)
-        await asyncio.sleep(e / 1000)
+        self.status = 1
+        rd = random.randint(ss, se)
+        ed = random.randint(es, ee)
+        print(f'(KeyBoard.Write : {keyvalue},{rd},{ed})')
+        self.ser(f"10{self.incoding(keyvalue)}")
+        await asyncio.sleep(rd / 1000)
+        self.ser(f"11{self.incoding(keyvalue)}")
+        await asyncio.sleep(ed / 1000)
 
-    async def sendpacket(self, status, keyvalue, ss, se, es=40, ee=70):
-        if self.status == 2 and self.wait:
-            await self.ra()
-            self.wait = False
+    def incoding(self, keyvalue):
         if type(keyvalue) is str:
             self.keyvalue = ord(keyvalue)
         else:
             self.keyvalue = keyvalue
-        self.status = status
-        s = random.randint(ss, se)
-        e = random.randint(es, ee)
-        packet = f'(0,{status},{self.keyvalue},{s - 5},{e})'
-        self.ser.write(packet.encode())
-        return s, e
+        return self.keyvalue
 
-    async def p(self, keyvalue, ss=40, se=70, wait=False):
+    async def p(self, keyvalue, s=40, e=70, wait=False):
+        sd = random.randint(s, e)
+
         if self.keyvalue != keyvalue or self.status != 2:
-            s, e = await self.sendpacket(2, keyvalue, ss=ss, se=se)
+            print(sd)
+            if self.wait:
+                await self.ra()
+                self.wait = False
+            self.status = 2
             self.wait = wait
-            print(f'(KeyBoard.Press : {keyvalue},{s})')
-            await asyncio.sleep(s / 1000)
-        else:
-            s = random.randint(ss, se)
-            await asyncio.sleep(s / 1000)
+            print(f'(KeyBoard.Press : {keyvalue},{sd})')
+            self.ser(f"10{self.incoding(keyvalue)}")
+        await asyncio.sleep(sd / 1000)
 
-    async def r(self, keyvalue, es=40, ee=70):
-        s, e = await self.sendpacket(3, keyvalue, ss=es, se=ee)
-        print(f'(KeyBoard.release : {keyvalue},{s})')
-        await asyncio.sleep(s / 1000)
+    async def r(self, keyvalue, s=40, e=70):
+        self.status = 3
+        sd = random.randint(s, e)
+        print(f'(KeyBoard.release : {keyvalue},{sd})')
+        self.ser(f"11{self.incoding(keyvalue)}")
+        await asyncio.sleep(sd / 1000)
 
-    async def ra(self, es=40, ee=70):
-        e = random.randint(es, ee)
+    async def ra(self, s=40, e=70):
         self.status = 4
-        packet = f'(0,{4},{self.keyvalue},{e - 5},{e})'
-        self.ser.write(packet.encode())
-        print(f'KeyBoard.ReleaseAll')
-        await asyncio.sleep(e / 1000)
+        sd = random.randint(s, e)
+        print(f'KeyBoard.ReleaseAll : {sd}')
+        self.ser("12")
+        await asyncio.sleep(sd / 1000)
 
-class asyncMouse:
-    def __init__(self, x, y, ser):
-        self.x = x + 2
+
+class BaseMouse(hardhid):
+    @staticmethod
+    def GetCursorPos():
+        return win32api.GetCursorPos()
+
+
+class Mouse(BaseMouse):
+    def __init__(self, ser, x=0, y=0):
+        super().__init__(ser)
+        self.x = x
         self.y = y
-        self.ser = ser
 
-    async def __call__(self, x, y, ss=40, se=70):
-        x1, y1 = win32api.GetCursorPos()
-        print(f'Mouse.goto : {x},{y}')
-        await self.m((x + self.x) - x1, (y + self.y) - y1, ss, se)
-
-    async def m(self, x, y, ss=40, se=70):
+    def __call__(self, x, y, s=40, e=70):
         def pm(a):
             if a > 0:
                 return 1
@@ -444,29 +421,114 @@ class asyncMouse:
             else:
                 return -1
 
+        nx, ny = win32api.GetCursorPos()
+        x = (x + self.x) - nx
+        y = (y + self.y) - ny
         x1, x2 = divmod(x, 127 if x > 0 else -127)
         y1, y2 = divmod(y, 127 if y > 0 else -127)
         x1 *= pm(x)
         y1 *= pm(y)
+        print(f'Mouse.goto : {x},{y}')
         for i in range(max(abs(x1), abs(y1))):
-            packet = f'(1,2,{127 * pm(x1)},{127 * pm(y1)},1)'
-            self.ser.write(packet.encode())
+            self.ser(f'20{127 * pm(x1)},{127 * pm(y1)}')
+            x1 -= pm(x1)
+            y1 -= pm(y1)
+            time.sleep(6 / 1000)
+        self.ser(f"20{x2},{y2}")
+        sd = random.randint(s, e)
+        time.sleep(sd / 1000)
+
+    def c(self, es=40, ee=70, ss=40, se=70):
+        sd = random.randint(ss, se)
+        ed = random.randint(es, ee)
+        print(f'Mouse.click : {sd} {ed}')
+        self.ser('23')
+        time.sleep(sd / 1000)
+        self.ser('25')
+        time.sleep(ed / 1000)
+
+    def p(self, lr, s=40, e=70):
+        if lr == 'l':
+            packet = '23'
+        elif lr == 'r':
+            packet = '24'
+        sd = random.randint(s, e)
+        print(f'Mouse.prass : {sd}')
+        self.ser(packet)
+        time.sleep(sd / 1000)
+
+    def r(self, lr, s=40, e=70):
+        if lr == 'l':
+            packet = '25'
+        elif lr == 'r':
+            packet = '26'
+        sd = random.randint(s, e)
+        print(f'Mouse.release : {sd}')
+        self.ser(packet)
+        time.sleep(sd / 1000)
+
+
+class asyncMouse(BaseMouse):
+    def __init__(self, ser, x=0, y=0):
+        super().__init__(ser)
+        self.x = x
+        self.y = y
+
+    async def __call__(self, x, y, s=40, e=70):
+        def pm(a):
+            if a > 0:
+                return 1
+            elif a == 0:
+                return 0
+            else:
+                return -1
+
+        nx, ny = win32api.GetCursorPos()
+        x = (x + self.x) - nx
+        y = (y + self.y) - ny
+        x1, x2 = divmod(x, 127 if x > 0 else -127)
+        y1, y2 = divmod(y, 127 if y > 0 else -127)
+        x1 *= pm(x)
+        y1 *= pm(y)
+        print(f'Mouse.goto : {x},{y}')
+        for i in range(max(abs(x1), abs(y1))):
+            self.ser(f'20{127 * pm(x1)},{127 * pm(y1)}')
             x1 -= pm(x1)
             y1 -= pm(y1)
             await asyncio.sleep(6 / 1000)
-        s = random.randint(ss, se)
-        packet = f'(1,2,{x2},{y2},{s - 5})'
-        self.ser.write(packet.encode())
-        await asyncio.sleep(s / 1000)
+        self.ser(f"20{x2},{y2}")
+        sd = random.randint(s, e)
+        await asyncio.sleep(sd / 1000)
 
     async def c(self, es=40, ee=70, ss=40, se=70):
-        s = random.randint(ss, se)
-        e = random.randint(es, ee)
-        packet = f'(1,1,0,{s - 5},{e})'
-        self.ser.write(packet.encode())
-        print(f'Mouse.click : {s} {e}')
-        await asyncio.sleep(s / 1000)
-        await asyncio.sleep(e / 1000)
+        sd = random.randint(ss, se)
+        ed = random.randint(es, ee)
+        print(f'Mouse.click : {sd} {ed}')
+        self.ser('23')
+        await asyncio.sleep(sd / 1000)
+        self.ser('25')
+        await asyncio.sleep(ed / 1000)
+
+    async def p(self, lr, s=40, e=70):
+        if lr == 'l':
+            packet = '23'
+        elif lr == 'r':
+            packet = '24'
+        sd = random.randint(s, e)
+        print(f'Mouse.prass : {sd}')
+        self.ser(packet)
+        await asyncio.sleep(sd / 1000)
+
+    async def r(self, lr, s=40, e=70):
+        if lr == 'l':
+            packet = '25'
+        elif lr == 'r':
+            packet = '26'
+        sd = random.randint(s, e)
+        print(f'Mouse.release : {sd}')
+        self.ser(packet)
+        await asyncio.sleep(sd / 1000)
+
 
 class fi:
     def __init__(self, findimgname, sx, ex, sy, ey, pixtf=False):
@@ -563,26 +625,88 @@ def creen(hwnd=None):
     win32gui.ReleaseDC(hwnd, hdc)
     return img
 
-def findarduino():
-    asd = os.getcwd().replace("\\", "/")
-    a = subprocess.check_output(f"{asd}/devcon find @*USB*", shell=True, stderr=subprocess.STDOUT)
-    try:
-        ser = serial.Serial(
-            port=f"{a[a.find('Arduino'):].split()[1][4:-1]}",
-            baudrate=9600, timeout=0
-        )
-    except:
-        ser = serial.Serial(
-            port=f"{a[a.find('Bossa'):].split()[2][5:-1]}",
-            baudrate=9600, timeout=0
-        )
-
-    return ser
 
 def findmapl():
     hwnd = win32gui.FindWindow(None, 'MapleStory')
-    left, top, right, bot = win32gui.GetWindowRect(hwnd)
-    if right - left < 900:
+    sx, sy, ex, ey = win32gui.GetWindowRect(hwnd)
+    if ex - sx < 900:
         hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-        left, top, right, bot = win32gui.GetWindowRect(hwnd)
-    return hwnd, left, top, right, bot
+        sx, sy, ex, ey = win32gui.GetWindowRect(hwnd)
+    return hwnd, sx + 2, sy, ex, ey
+
+
+class arduino:
+    def __init__(self, baud=9600, port=None, timeout=2):
+        if not port:
+            sr = arduino.find_port(baud, timeout)
+            if not sr:
+                raise ValueError("Could not find port.")
+        else:
+            sr = serial.Serial(port, baud, timeout=timeout)
+
+        self.sr = sr
+
+    def __call__(self, cmd):
+        cmd += "$!"
+        self.sr.write(cmd.encode())
+
+    @staticmethod
+    def find_port(baud, timeout):
+        # This function must have an Arduino code that receives '00$!' and sends 'version'.
+
+        def enumerate_serial_ports():
+            path = 'HARDWARE\\DEVICEMAP\\SERIALCOMM'
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
+            except WindowsError:
+                raise Exception
+
+            for i in itertools.count():
+                try:
+                    val = winreg.EnumValue(key, i)
+                    yield (str(val[1]))  # , str(val[0]))
+                except EnvironmentError:
+                    break
+
+        ports = enumerate_serial_ports()
+
+        for p in ports:
+            try:
+                sr = serial.Serial(p, baud, timeout=timeout)
+            except (serial.serialutil.SerialException, OSError) as e:
+                continue
+
+            try:
+                packet = '00$!'
+                sr.flush()
+                sr.write(packet.encode())
+            except Exception:
+                return None
+
+            version = sr.readline()
+            version = version.decode()[:len(version) - 2]
+            if version != 'version':
+                sr.close()
+                continue
+            if sr:
+                return sr
+        return None
+
+    @staticmethod
+    def findarduino_devcon():
+        # This function need devcon.exe
+        import subprocess
+        asd = os.getcwd().replace("\\", "/")
+        a = subprocess.check_output(f"{asd}/devcon find @*USB*", shell=True, stderr=subprocess.STDOUT)
+        try:
+            ser = serial.Serial(
+                port=f"{a[a.find('Arduino'):].split()[1][4:-1]}",
+                baudrate=9600, timeout=0
+            )
+        except:
+            ser = serial.Serial(
+                port=f"{a[a.find('Bossa'):].split()[2][5:-1]}",
+                baudrate=9600, timeout=0
+            )
+
+        return ser

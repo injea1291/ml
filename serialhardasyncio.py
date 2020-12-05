@@ -3,11 +3,10 @@ from cls import *
 import time
 import functools
 
-ser = findarduino()
-hwnd, left, top, right, bot = findmapl()
+ser = arduino()
+hwnd, sx,sy,ex,ey = findmapl()
 key = asyncKey(ser)
-mou = asyncMouse(left, top, ser)
-
+mou = asyncMouse(ser, sx,sy)
 altk, shiftk, ctrlk, leftk, rightk, upk, downk, esck, spacek, bsk, tabk, returnk = 130, 129, 128, 216, 215, 218, 217, 177, 32, 8, 179, 176
 ma = [10, 248, 86, 158, 92, 54]  # [10, 212, 86, 171, 33, 69] 신전4, [10, 248, 86, 158, 92, 54] 폐쇄구역3
 xy = [[], []]  # 0캐릭터위치, 1룬 위치
@@ -57,80 +56,7 @@ async def goto(x, y, z=3):
             break
 
 
-async def scmc():
-    global xy, cren, mainkey
-    stimety, stime = [True, True], [0, 0]
 
-    resul = list(range(len(fili)))
-
-    mainkey = asyncio.create_task(cadenmo())
-    asyncio.create_task(stkey())
-    onf = True
-    while True:
-        if win32api.GetAsyncKeyState(win32con.VK_F1):
-            if onf:
-                onf = False
-                print(onf)
-                mainkey.cancel()
-                try:
-                    await mainkey
-                except asyncio.CancelledError:
-                    print("cancel mainkey")
-                onfli['ai'] = False
-            else:
-                onf = True
-                print(onf)
-                mainkey = asyncio.create_task(cadenmo())
-                onfli['ai'] = True
-
-        if onf:
-            cren = creen(hwnd)
-            resul[0] = fili[0].piximg(cren)
-            resul[1] = fili[1].piximg(cren)
-            resul[2] = fili[2].piximg(cren)
-            resul[3] = fili[3].pixpix(cren)
-
-            for e, i in enumerate(fili[4:]):
-                resul[e + 4] = i.re(cren)
-
-            if xy[0] == resul[0][1]:
-                if stimety[1]:
-                    stime[1] = time.time()
-                    stimety[1] = False
-                elif time.time() - stime[1] > 10:
-                    loop.run_in_executor(None, winsound.Beep, 300, 3000)
-                    onfli['sub'] = 3
-            else:
-                stimety[1] = True
-
-            if resul[0][0] > 0.99:
-                xy[0] = resul[0][1]
-
-            if resul[3]:
-                onfli['sim'] = True
-
-            if resul[2][0] > 0.99:
-                xy[1] = resul[2][1]
-                onfli['sub'] = 1
-
-            if resul[1][0] > 0.99:
-                if stimety[0]:
-                    stime[0] = time.time()
-                    stimety[0] = False
-                elif time.time() - stime[0] > 5:
-                    print('사람')
-                    loop.run_in_executor(None, winsound.Beep, 300, 3000)
-            else:
-                stimety[0] = True
-
-            if resul[4][0] > 0.99:
-                loop.run_in_executor(None, winsound.Beep, 300, 3000)
-
-            if resul[5][0] > 0.6:
-                loop.run_in_executor(None, winsound.Beep, 300, 3000)
-                onfli['sub'] = 2
-
-            await asyncio.sleep(0.001)
 
 
 async def useai():
@@ -165,7 +91,6 @@ async def cadenmo():
     while True:
         while True:
             if xy[0][0] < 90:
-
                 if xy[0][1] >= 25:
                     await goto(ma[4], ma[5])
                     continue
@@ -176,10 +101,10 @@ async def cadenmo():
 
                 s = random.randint(40, 70)
                 e = random.randint(60, 90)
-                packet = f'(0,1,218,{s - 5},{e})'
-                ser.write(packet.encode())
                 print(f'(KeyBoard.Write : 218, {s}, {e})')
+                ser(f"10218")
                 await asyncio.sleep(s / 1000)
+                ser(f"11218")
                 await asyncio.sleep(e / 1000)
             else:
                 break
@@ -301,7 +226,7 @@ async def cadenmo():
         await key.r(rightk)
 
 
-async def stkey():
+async def submain():
     global onfli,mainkey
     while True:
         if onfli['sub']:
@@ -322,7 +247,7 @@ async def stkey():
                     for i in labelli:
                         if i[0] == 'star' or i[0] == 'lie':
                             break
-                        sleep(0.5)
+                        await asyncio.sleep(0.5)
                         await key(eval(i[0] + 'k'))
             elif onfli['sub'] == 2:
                 onfli['ai'] = False
@@ -376,4 +301,92 @@ async def stkey():
         await asyncio.sleep(0.001)
 
 
-asyncio.run(scmc())
+async def main():
+    global xy, cren, mainkey
+    stimety, stime = [True, True], [0, 0]
+
+    resul = list(range(len(fili)))
+
+    mainkey = asyncio.create_task(cadenmo())
+    submaintask = asyncio.create_task(submain())
+    onf = True
+    #fps = checkfps()
+    while True:
+        if win32api.GetAsyncKeyState(win32con.VK_F1):
+            if onf:
+                onf = False
+                print(onf)
+                mainkey.cancel()
+                try:
+                    await mainkey
+                except asyncio.CancelledError:
+                    print("cancel mainkey")
+
+                submaintask.cancel()
+                try:
+                    await submaintask
+                except asyncio.CancelledError:
+                    print("cancel submaintask")
+
+                onfli['ai'] = False
+                time.sleep(1)
+            else:
+                onf = True
+                print(onf)
+                mainkey = asyncio.create_task(cadenmo())
+                submaintask = asyncio.create_task(submain())
+                onfli['ai'] = True
+                time.sleep(1)
+        #fps.print()
+        if onf:
+            cren = creen(hwnd)
+            resul[0] = fili[0].piximg(cren)
+            resul[1] = fili[1].piximg(cren)
+            resul[2] = fili[2].piximg(cren)
+            resul[3] = fili[3].pixpix(cren)
+
+            for e, i in enumerate(fili[4:]):
+                resul[e + 4] = i.re(cren)
+
+            if xy[0] == resul[0][1]:
+                if stimety[1]:
+                    stime[1] = time.time()
+                    stimety[1] = False
+                elif time.time() - stime[1] > 10:
+                    loop.run_in_executor(None, winsound.Beep, 300, 3000)
+                    onfli['sub'] = 3
+            else:
+                stimety[1] = True
+
+            if resul[0][0] > 0.99:
+
+                xy[0] = resul[0][1]
+
+            if resul[3]:
+                onfli['sim'] = True
+
+            if resul[2][0] > 0.99:
+                xy[1] = resul[2][1]
+                onfli['sub'] = 1
+
+            if resul[1][0] > 0.99:
+                if stimety[0]:
+                    stime[0] = time.time()
+                    stimety[0] = False
+                elif time.time() - stime[0] > 5:
+                    print('사람')
+                    loop.run_in_executor(None, winsound.Beep, 300, 3000)
+            else:
+                stimety[0] = True
+
+            if resul[4][0] > 0.99:
+                loop.run_in_executor(None, winsound.Beep, 300, 3000)
+
+            if resul[5][0] > 0.6:
+                loop.run_in_executor(None, winsound.Beep, 300, 3000)
+                onfli['sub'] = 2
+
+            await asyncio.sleep(0.001)
+
+asyncio.run(main())
+

@@ -7,6 +7,7 @@ lies = ["star", "lie"]
 sum = ["right", "left", "up", "down", "star", "lie"]
 images = "data\\set\\images\\"
 labels = "data\\set\\labels\\"
+os.chdir("data\\set")
 
 def convertmy(lis, ih, iw, zoom):
     xmin = max(float(lis[0]) - float(lis[2]) / 2, 0)
@@ -36,16 +37,16 @@ def convertyolo(lis, ih, iw):
 
 
 def globsort(a, a1, tj):
-    di, d = [], glob.glob(f"{a}\\{a1}\\*.{tj}")
+
+    di, d = [], glob.iglob(f"{a}\\{a1}\\*.{tj}")
     for i in d:
-        i = i[len(a) + 2 + len(a1):]
-        i = i[:-4]
+        i = i[-i[::-1].find('\\'):-4]
         di.append(int(i))
     di.sort()
     return di
 
 
-def renamefile1(a, a1, a2, a3, count):
+def renamefile(a, a1, a2, a3, count):
     dri = globsort(a, a1, a2)
     for c, i in enumerate(dri):
         c = c + count
@@ -53,7 +54,7 @@ def renamefile1(a, a1, a2, a3, count):
         os.rename(f'{a}\\{a1}\\{str(i)}.{a2}', f'{a}\\{a1}\\{c}.{a3}')
 
 
-# renamefile1('images', 'result', 'png', 'png', 401)
+# renamefile('images', 'result', 'png', 'png', 401)
 
 
 def mkdatatxt(name):
@@ -69,9 +70,9 @@ def mkdatatxt(name):
 def yololabel(labelimg, zoom, labellist):
     dri = globsort('labels', labelimg, "txt")
     for i in dri:
-        f = open(labels + f"{labelimg}\\{str(i)}.txt", 'r')
-        f1 = open(labels + f"result\\{str(i)}.txt", 'w')
-        img = cv.imread(images + f"images\\{labelimg}\\{str(i)}.png")
+        f = open(f"labels\\{labelimg}\\{str(i)}.txt", 'r')
+        f1 = open(f"labels\\result\\{str(i)}.txt", 'w')
+        img = cv.imread(f"images\\{labelimg}\\{str(i)}.png")
         ih, iw = img.shape[:2]
         lines = f.readlines()
         for line in lines:
@@ -92,9 +93,9 @@ def yololabel(labelimg, zoom, labellist):
 def mylabel(labelimg, zoom, labellist):
     dri = globsort("labels", labelimg, "txt")
     for i in dri:
-        f = open(labels + f"{labelimg}\\{str(i)}.txt", 'r')
-        f1 = open(labels + f"result\\{str(i)}.txt", 'w')
-        img = cv.imread(images + f"{labelimg}\\{str(i)}.jpg")
+        f = open(f"labels\\{labelimg}\\{str(i)}.txt", 'r')
+        f1 = open(f"labels\\result\\{str(i)}.txt", 'w')
+        img = cv.imread(f"images\\{labelimg}\\{str(i)}.png")
         ih, iw = img.shape[:2]
         lines = f.readlines()
         for line in lines:
