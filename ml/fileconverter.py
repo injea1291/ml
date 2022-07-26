@@ -7,7 +7,7 @@ lies = ["star", "lie"]
 sum = ["right", "left", "up", "down", "star", "lie"]
 images = "data\\set\\images\\"
 labels = "data\\set\\labels\\"
-os.chdir("data\\set")
+os.chdir("../data/set")
 
 def convertmy(lis, ih, iw, zoom):
     xmin = max(float(lis[0]) - float(lis[2]) / 2, 0)

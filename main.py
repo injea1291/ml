@@ -1,10 +1,11 @@
 import winsound
-from cls import *
+from ml.cls import *
 import time
 import functools
-
+from ml.darknet import performDetect
 ser = arduino()
-hwnd, sx,sy,ex,ey = findmapl()
+hwnd = getmaplhwnd()
+sx, sy, ex, ey = win32gui.GetWindowRect(hwnd)
 key = asyncKey(ser)
 mou = asyncMouse(ser, sx,sy)
 altk, shiftk, ctrlk, leftk, rightk, upk, downk, esck, spacek, bsk, tabk, returnk = 130, 129, 128, 216, 215, 218, 217, 177, 32, 8, 179, 176
@@ -12,16 +13,16 @@ ma = [10, 248, 86, 158, 92, 54]  # [10, 212, 86, 171, 33, 69] 신전4, [10, 248,
 xy = [[], []]  # 0캐릭터위치, 1룬 위치
 onfli = {'ai': True, 'sim': False, 'sub': 0}
 loop = asyncio.get_event_loop()
-fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixelsearch=True),
+        fi("y", ma[0], ma[1], ma[2], ma[3], pixelsearch=True),
+        fi("r", ma[0], ma[1], ma[2], ma[3], pixelsearch=True),
         fi(None, 1345, 1346, 744, 745),
         fi("lie", 1000, 1366, 298, 578, True),
         fi("b", 580, 650, 63, 83)]
 
 fili[2].pixli += fi.pixex(cv.imread('data\\dataimg\\g.png'))
 fili[3].pixli.append([[185, 169, 152], [185, 169, 152]])
-fili[4].setmaskimg(cv.imread('data\\dataimg\\liem.png'))
+fili[4].setmask(cv.imread('data\\dataimg\\liem.png'))
 
 
 async def goto(x, y, z=3):
@@ -265,7 +266,7 @@ async def submain():
                     if cheak.pixpix(cren):
                         stime = time.time()
                         while time.time() - stime < 4:
-                            player = fili[1].piximg(cren)
+                            player = fili[1].pixelmatch(cren)
                             if player[0] > 0.99:
                                 await key(esck)
                                 await key(176)
@@ -339,14 +340,14 @@ async def main():
                 time.sleep(1)
         #fps.print()
         if onf:
-            cren = creen(hwnd)
-            resul[0] = fili[0].piximg(cren)
-            resul[1] = fili[1].piximg(cren)
-            resul[2] = fili[2].piximg(cren)
+            cren = getimgfromhwnd(hwnd)
+            resul[0] = fili[0].pixelmatch(cren)
+            resul[1] = fili[1].pixelmatch(cren)
+            resul[2] = fili[2].pixelmatch(cren)
             resul[3] = fili[3].pixpix(cren)
 
             for e, i in enumerate(fili[4:]):
-                resul[e + 4] = i.re(cren)
+                resul[e + 4] = i.match(cren)
 
             if xy[0] == resul[0][1]:
                 if stimety[1]:

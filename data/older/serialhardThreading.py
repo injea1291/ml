@@ -1,6 +1,6 @@
 from threading import Thread, Lock
 import winsound
-from cls import *
+from ml.cls import *
 import time
 
 
@@ -45,7 +45,7 @@ class Keyboard1(Keyboard):
 
 
 ser = findarduino()
-hwnd, sx, sy, ex, ey = findmapl()
+hwnd, sx, sy, ex, ey = getmaplhwnd()
 key = Keyboard1(ser)
 mou = Mouse(ser,sx, sy,)
 
@@ -56,16 +56,16 @@ onfli = {'ai': True, 'sim': False}
 rli = {'stoprunning': False, 'findBoss': False, 'stopmove': False, 'findRhun': False}
 cren, lock, beep = [], Lock(), Thread(target=winsound.Beep, args=(300, 3000,))
 
-fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("y", ma[0], ma[1], ma[2], ma[3], pixtf=True),
-        fi("r", ma[0], ma[1], ma[2], ma[3], pixtf=True),
+fili = [fi("i", ma[0], ma[1], ma[2], ma[3], pixelsearch=True),
+        fi("y", ma[0], ma[1], ma[2], ma[3], pixelsearch=True),
+        fi("r", ma[0], ma[1], ma[2], ma[3], pixelsearch=True),
         fi(None, 1345, 1346, 744, 745),
         fi("lie", 1000, 1366, 298, 578, True),
         fi("b", 580, 650, 63, 83)]
 
 fili[2].pixli += fi.pixex(cv.imread('data\\dataimg\\g.png'))
 fili[3].pixli.append([[185, 169, 152], [185, 169, 152]])
-fili[4].setmaskimg(cv.imread('data\\dataimg\\liem.png'))
+fili[4].setmask(cv.imread('data\\dataimg\\liem.png'))
 
 
 def goto(x, y, z=3):
@@ -119,14 +119,14 @@ def scmc():
                 print(onf)
                 sleep(1)
         if onf:
-            cren = creen(hwnd)
-            resul[0] = fili[0].piximg(cren)
-            resul[1] = fili[1].piximg(cren)
-            resul[2] = fili[2].piximg(cren)
+            cren = getimgfromhwnd(hwnd)
+            resul[0] = fili[0].pixelmatch(cren)
+            resul[1] = fili[1].pixelmatch(cren)
+            resul[2] = fili[2].pixelmatch(cren)
             resul[3] = fili[3].pixpix(cren)
 
             for e, i in enumerate(fili[4:]):
-                resul[e + 4] = i.re(cren)
+                resul[e + 4] = i.match(cren)
 
             if xy[0] == resul[0][1]:
                 if stimety[1]:
@@ -563,7 +563,7 @@ def stkey():
                     if cheak.pixpix(cren):
                         stime = time.time()
                         while time.time() - stime < 4:
-                            player = fili[1].piximg(cren)
+                            player = fili[1].pixelmatch(cren)
                             if player[0] > 0.99:
                                 key(esck)
                                 key(176)

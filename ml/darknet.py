@@ -63,8 +63,8 @@ hasGPU = True
 
 cwd = os.path.dirname(__file__)
 os.environ['PATH'] = cwd + ';' + os.environ['PATH']
-winGPUdll = os.path.join(cwd, "yolo_cpp_dll.dll")
-winNoGPUdll = os.path.join(cwd, "yolo_cpp_dll_nogpu.dll")
+winGPUdll = os.path.join(cwd, "../yolo_cpp_dll.dll")
+winNoGPUdll = os.path.join(cwd, "../yolo_cpp_dll_nogpu.dll")
 lib = CDLL(winGPUdll, RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
